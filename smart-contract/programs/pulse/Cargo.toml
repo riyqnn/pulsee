@@ -1,0 +1,20 @@
+[package]
+name = "pulse"
+version = "0.1.0"
+description = "PULSE - Real-time revenue split with claim-based distribution"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "pulse"
+
+[features]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+cpi = ["no-entrypoint"]
+default = []
+idl-build = ["anchor-lang/idl-build"]
+
+[dependencies]
+anchor-lang = "0.32.1"

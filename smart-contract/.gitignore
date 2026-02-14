@@ -1,0 +1,58 @@
+# Rust/Cargo
+/target/
+Cargo.lock
+**/*.rs.bk
+*.pdb
+
+# Anchor
+.anchor/
+.idl/
+
+# Node/TypeScript
+/node_modules/
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# Package manager
+pnpm-lock.yaml
+package-lock.json
+yarn.lock
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Testing
+/coverage/
+
+# Build output
+/build/
+/dist/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Solana CLI
+.config/
