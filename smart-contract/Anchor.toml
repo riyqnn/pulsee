@@ -1,13 +1,13 @@
 [toolchain]
 
 [features]
-seeds = false
+resolution = true
 skip-lint = false
 
-[programs.localnet]
-pulse = "HkUzsGxmAhjh6UpdBc6ECsN8pj6D8poX7H7yLvuMRLtS"
-
 [programs.devnet]
+pulse = "46AaMsoX9xU6Ydeohp5YgWnK7PT3b4hPiw8s7L3GsskH"
+
+[programs.localnet]
 pulse = "HkUzsGxmAhjh6UpdBc6ECsN8pj6D8poX7H7yLvuMRLtS"
 
 [registry]
@@ -19,3 +19,5 @@ wallet = "~/.config/solana/id.json"
 
 [scripts]
 test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
+
+[hooks]

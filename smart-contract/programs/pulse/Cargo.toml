@@ -1,7 +1,7 @@
 [package]
 name = "pulse"
 version = "0.1.0"
-description = "PULSE - Real-time revenue split with claim-based distribution"
+description = "TixProtocol - AI-Powered Ticketing Protocol"
 edition = "2021"
 
 [lib]
