@@ -1,0 +1,2 @@
+patchedDependencies:
+  eventemitter3@5.0.4: patches/eventemitter3@5.0.4.patch

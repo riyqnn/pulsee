@@ -1,0 +1,10 @@
+diff --git a/index.js b/index.js
+index 6ea485c40a694deb72801fcd0048a3c44de95403..c0cebbc93947198b98541d6aad3df8032d4b734d 100644
+--- a/index.js
++++ b/index.js
+@@ -333,4 +333,5 @@ EventEmitter.EventEmitter = EventEmitter;
+ //
+ if ('undefined' !== typeof module) {
+   module.exports = EventEmitter;
++  module.exports.default = EventEmitter; // Add default export for CommonJS compatibility
+ }
