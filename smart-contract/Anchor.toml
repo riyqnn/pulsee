@@ -5,7 +5,7 @@ resolution = true
 skip-lint = false
 
 [programs.devnet]
-pulse = "46AaMsoX9xU6Ydeohp5YgWnK7PT3b4hPiw8s7L3GsskH"
+pulse = "DUJBE41hSUh178BujH79WtirW8p9A3aA3WNCdk6ibyPp"
 
 [programs.localnet]
 pulse = "HkUzsGxmAhjh6UpdBc6ECsN8pj6D8poX7H7yLvuMRLtS"

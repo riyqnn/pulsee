@@ -1,43 +1,10 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { NeoCard, NeoBadge } from '../neo';
-
-interface DutchAuction {
-  id: string;
-  eventName: string;
-  ticketId: string;
-  startPrice: number;
-  currentPrice: number;
-  endPrice: number;
-  startTime: number;
-  endTime: number;
-  expiresAt: number;
-}
-
-const mockAuctions: DutchAuction[] = [
-  {
-    id: '1',
-    eventName: 'NEON NIGHTS FESTIVAL 2024',
-    ticketId: 'TIER_VIP_001',
-    startPrice: 3.0,
-    currentPrice: 2.15,
-    endPrice: 1.5,
-    startTime: Date.now() - 3600000,
-    endTime: Date.now() + 7200000,
-    expiresAt: Date.now() + 7200000,
-  },
-  {
-    id: '2',
-    eventName: 'SYMPHONY OF CODE',
-    ticketId: 'TIER_ORC_042',
-    startPrice: 1.2,
-    currentPrice: 0.95,
-    endPrice: 0.8,
-    startTime: Date.now() - 1800000,
-    endTime: Date.now() + 5400000,
-    expiresAt: Date.now() + 5400000,
-  },
-];
+import { useMarketContext } from '../../contexts/MarketContext';
+import { useSecondaryMarket } from '../../hooks/useSecondaryMarket';
+import { useEventsContext } from '../../contexts/EventsContext';
+import { getSaleTypeString } from '../../types/pulse';
 
 const CountdownTimer = ({ expiresAt }: { expiresAt: number }) => {
   const [timeLeft, setTimeLeft] = useState(calculateTimeLeft(expiresAt));
@@ -98,27 +65,46 @@ const PriceDecayChart = ({ startPrice, currentPrice, endPrice }: { startPrice: n
 };
 
 export const SecondaryMarket = () => {
-  const [auctions, setAuctions] = useState<DutchAuction[]>(mockAuctions);
+  const { activeListings, loading } = useMarketContext();
+  const { getCurrentPrice } = useSecondaryMarket();
+  const { getEventByPubkey } = useEventsContext();
+
+  // Convert listings to auction format
+  const auctions = activeListings
+    .filter((listing) => {
+      const saleType = getSaleTypeString(listing.account.saleType);
+      return saleType === 'Dutch';
+    })
+    .map((listing) => {
+      const event = getEventByPubkey(listing.account.event);
+      return {
+        id: listing.account.listingId,
+        eventName: event?.account.name || 'Unknown Event',
+        ticketId: listing.account.tierId,
+        startPrice: Number(listing.account.maxPrice) / 1e9,
+        currentPrice: getCurrentPrice(listing.account),
+        endPrice: Number(listing.account.minPrice) / 1e9,
+        startTime: Number(listing.account.createdAt) * 1000,
+        endTime: Number(listing.account.expiresAt) * 1000,
+        expiresAt: Number(listing.account.expiresAt) * 1000,
+        publicKey: listing.publicKey,
+        listing: listing.account,
+      };
+    });
+
+  const [currentPrices, setCurrentPrices] = useState<Record<string, number>>({});
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setAuctions((prev) =>
-        prev.map((auction) => {
-          const elapsed = Date.now() - auction.startTime;
-          const duration = auction.endTime - auction.startTime;
-          const priceDrop = auction.startPrice - auction.endPrice;
-          const currentPrice = Math.max(
-            auction.endPrice,
-            auction.startPrice - (priceDrop * elapsed) / duration
-          );
-
-          return { ...auction, currentPrice };
-        })
-      );
+      const newPrices: Record<string, number> = {};
+      auctions.forEach((auction) => {
+        newPrices[auction.id] = getCurrentPrice(auction.listing);
+      });
+      setCurrentPrices(newPrices);
     }, 1000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [auctions, getCurrentPrice]);
 
   return (
     <motion.div
@@ -128,57 +114,67 @@ export const SecondaryMarket = () => {
     >
       <div className="flex items-center justify-between">
         <h2 className="font-display font-extrabold text-5xl">SECONDARY MARKET</h2>
-        <NeoBadge variant="pink">DUTCH AUCTION</NeoBadge>
+        <NeoBadge variant="pink">{auctions.length} DUTCH AUCTIONS</NeoBadge>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {auctions.map((auction) => (
-          <NeoCard key={auction.id} className="p-6">
-            <div className="space-y-4">
-              <div className="flex items-start justify-between">
-                <div>
-                  <h3 className="font-display font-bold text-xl">{auction.eventName}</h3>
-                  <p className="font-mono text-sm text-neo-pink">{auction.ticketId}</p>
+      {loading ? (
+        <div className="text-center py-12 font-mono">Loading listings...</div>
+      ) : auctions.length === 0 ? (
+        <div className="text-center py-12 font-mono">No active Dutch auctions</div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {auctions.map((auction) => {
+            const currentPrice = currentPrices[auction.id] || auction.currentPrice;
+            const savings = auction.startPrice - currentPrice;
+            const drop = ((auction.startPrice - currentPrice) / auction.startPrice) * 100;
+
+            return (
+              <NeoCard key={auction.id} className="p-6">
+                <div className="space-y-4">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h3 className="font-display font-bold text-xl">{auction.eventName}</h3>
+                      <p className="font-mono text-sm text-neo-pink">{auction.ticketId}</p>
+                    </div>
+                    <NeoBadge variant="pink">LIVE</NeoBadge>
+                  </div>
+
+                  <div className="border-y-4 border-neo-black py-4">
+                    <PriceDecayChart
+                      startPrice={auction.startPrice}
+                      currentPrice={currentPrice}
+                      endPrice={auction.endPrice}
+                    />
+                  </div>
+
+                  <CountdownTimer expiresAt={auction.expiresAt} />
+
+                  <div className="grid grid-cols-2 gap-4 pt-4 border-t-4 border-neo-black">
+                    <div className="font-mono text-sm">
+                      <span className="text-neo-pink">SAVED:</span>
+                      <span className="font-bold text-neo-green ml-2">
+                        {savings.toFixed(2)} SOL
+                      </span>
+                    </div>
+                    <div className="font-mono text-sm text-right">
+                      <span className="text-neo-pink">DROP:</span>
+                      <span className="font-bold ml-2">{drop.toFixed(1)}%</span>
+                    </div>
+                  </div>
+
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    className="w-full py-3 font-bold bg-neo-pink text-neo-white border-4 border-neo-black hover:bg-neo-green hover:text-neo-black transition-colors"
+                  >
+                    BUY @ {currentPrice.toFixed(2)} SOL
+                  </motion.button>
                 </div>
-                <NeoBadge variant="pink">LIVE</NeoBadge>
-              </div>
-
-              <div className="border-y-4 border-neo-black py-4">
-                <PriceDecayChart
-                  startPrice={auction.startPrice}
-                  currentPrice={auction.currentPrice}
-                  endPrice={auction.endPrice}
-                />
-              </div>
-
-              <CountdownTimer expiresAt={auction.expiresAt} />
-
-              <div className="grid grid-cols-2 gap-4 pt-4 border-t-4 border-neo-black">
-                <div className="font-mono text-sm">
-                  <span className="text-neo-pink">SAVED:</span>
-                  <span className="font-bold text-neo-green ml-2">
-                    {(auction.startPrice - auction.currentPrice).toFixed(2)} SOL
-                  </span>
-                </div>
-                <div className="font-mono text-sm text-right">
-                  <span className="text-neo-pink">DROP:</span>
-                  <span className="font-bold ml-2">
-                    {(((auction.startPrice - auction.currentPrice) / auction.startPrice) * 100).toFixed(1)}%
-                  </span>
-                </div>
-              </div>
-
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                className="w-full py-3 font-bold bg-neo-pink text-neo-white border-4 border-neo-black hover:bg-neo-green hover:text-neo-black transition-colors"
-              >
-                BUY @ {auction.currentPrice.toFixed(2)} SOL
-              </motion.button>
-            </div>
-          </NeoCard>
-        ))}
-      </div>
+              </NeoCard>
+            );
+          })}
+        </div>
+      )}
     </motion.div>
   );
 };

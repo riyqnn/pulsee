@@ -1,26 +1,30 @@
 import { useWallet } from '@solana/wallet-adapter-react';
-import { Connection } from '@solana/web3.js';
-import { Program, AnchorProvider } from '@coral-xyz/anchor';
-import { useMemo } from 'react';
+import { Connection, PublicKey } from '@solana/web3.js';
+import { Program, AnchorProvider, type Idl } from '@coral-xyz/anchor';
+import { useMemo, useState, useEffect, useCallback } from 'react';
 import pulseIDL from '../idl/pulse.json';
 
-// This would be the IDL type - you'd normally generate this from the IDL
-export interface PulseIDL {
-  version: string;
-  name: string;
-  instructions: any[];
-  accounts: any[];
-  events: any[];
-  errors: any[];
-  types: any[];
+// Export the program ID constant
+export const PROGRAM_ID = new PublicKey('DUJBE41hSUh178BujH79WtirW8p9A3aA3WNCdk6ibyPp');
+
+interface ConnectionStatus {
+  connected: boolean;
+  blockHeight?: number;
+  slot?: number;
 }
 
 export const useProgram = () => {
   const wallet = useWallet();
+  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>({
+    connected: false,
+  });
 
   const connection = useMemo(() => {
     // Use devnet for development, switch to mainnet-beta for production
-    return new Connection('https://api.devnet.solana.com', 'confirmed');
+    return new Connection('https://api.devnet.solana.com', {
+      commitment: 'confirmed',
+      wsEndpoint: 'wss://api.devnet.solana.com',
+    });
   }, []);
 
   const provider = useMemo(() => {
@@ -36,63 +40,65 @@ export const useProgram = () => {
   const program = useMemo(() => {
     if (!provider) return null;
 
-    // Load the IDL from the imported JSON
-    // Anchor Program expects: (idl, provider)
-    // The programId is inferred from the IDL or can be overridden in the provider
-    return new Program(
-      pulseIDL as unknown as PulseIDL,
-      provider
-    );
+    return new Program(pulseIDL as Idl, provider);
   }, [provider]);
+
+  // Monitor connection status
+  useEffect(() => {
+    let mounted = true;
+
+    const updateConnectionStatus = async () => {
+      try {
+        const epochInfo = await connection.getEpochInfo();
+        if (mounted) {
+          setConnectionStatus({
+            connected: true,
+            blockHeight: epochInfo.blockHeight,
+            slot: epochInfo.absoluteSlot,
+          });
+        }
+      } catch (error) {
+        console.error('Failed to get connection status:', error);
+        if (mounted) {
+          setConnectionStatus({ connected: false });
+        }
+      }
+    };
+
+    updateConnectionStatus();
+
+    // Update every 30 seconds
+    const interval = setInterval(updateConnectionStatus, 30000);
+
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+    };
+  }, [connection]);
+
+  // Refresh connection status
+  const refreshStatus = useCallback(async () => {
+    try {
+      const epochInfo = await connection.getEpochInfo();
+      setConnectionStatus({
+        connected: true,
+        blockHeight: epochInfo.blockHeight,
+        slot: epochInfo.absoluteSlot,
+      });
+    } catch (error) {
+      console.error('Failed to refresh connection status:', error);
+      setConnectionStatus({ connected: false });
+    }
+  }, [connection]);
 
   return {
     program,
     connection,
     provider,
+    programId: PROGRAM_ID,
     isConnected: !!wallet.publicKey,
     publicKey: wallet.publicKey,
-  };
-};
-
-export const useAIAgent = () => {
-  const { program, isConnected } = useProgram();
-
-  const createAgent = async (agentConfig: {
-    agentId: string;
-    name: string;
-    maxBudgetPerTicket: number;
-    totalBudget: number;
-    autoPurchaseEnabled: boolean;
-    autoPurchaseThreshold: number;
-    maxTicketsPerEvent: number;
-  }) => {
-    if (!program || !isConnected) {
-      throw new Error('Wallet not connected');
-    }
-
-    // This would call the actual smart contract
-    // For now, it's a placeholder implementation
-    console.log('Creating AI Agent:', agentConfig);
-
-    // TODO: Implement actual transaction
-    // const tx = await program.methods
-    //   .createAIAgent(...)
-    //   .accounts({...})
-    //   .rpc();
-
-    return { success: true };
-  };
-
-  const getAgents = async () => {
-    if (!program) return [];
-
-    // TODO: Fetch agents from the blockchain
-    return [];
-  };
-
-  return {
-    createAgent,
-    getAgents,
-    isReady: !!program,
+    connectionStatus,
+    refreshStatus,
   };
 };

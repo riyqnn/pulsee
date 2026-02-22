@@ -1,35 +1,90 @@
-import { useState } from 'react';
+// AI Agent Settings Component
+// Creates agents using the deployed contract's create_ai_agent instruction
+// Only the 7 required fields from the deployed contract are collected
+
+import { useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { NeoCard, NeoInput, NeoToggle, NeoButton } from '../neo';
+import { useAIAgent } from '../../hooks/useAIAgent';
+import { useAgentsContext } from '../../contexts/AgentsContext';
 
 interface AgentSettingsProps {
-  onSave?: (settings: AgentSettings) => void;
+  onClose?: () => void;
 }
 
+// Agent settings that match the deployed contract's create_ai_agent instruction (7 args)
 export interface AgentSettings {
+  agentId: string;
+  name: string;
   maxBudgetPerTicket: number;
   totalBudget: number;
   autoPurchaseEnabled: boolean;
   autoPurchaseThreshold: number;
   maxTicketsPerEvent: number;
-  requireVerification: boolean;
-  allowCoordination: boolean;
 }
 
-export const AgentSettings = ({ onSave }: AgentSettingsProps) => {
+export const AgentSettings = ({ onClose }: AgentSettingsProps) => {
+  const { createAgent } = useAIAgent();
+  const { refresh } = useAgentsContext();
+  const [loading, setLoading] = useState(false);
   const [settings, setSettings] = useState<AgentSettings>({
-    maxBudgetPerTicket: 5,
-    totalBudget: 50,
+    agentId: '',
+    name: '',
+    maxBudgetPerTicket: 0.5,
+    totalBudget: 1,
     autoPurchaseEnabled: true,
     autoPurchaseThreshold: 90,
     maxTicketsPerEvent: 4,
-    requireVerification: false,
-    allowCoordination: true,
   });
 
-  const handleSave = () => {
-    onSave?.(settings);
-  };
+  const handleSave = useCallback(async () => {
+    if (!settings.agentId || !settings.name) {
+      alert('Please provide both Agent ID and Name');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // Create the agent
+      const tx = await createAgent({
+        agentId: settings.agentId,
+        name: settings.name,
+        maxBudgetPerTicket: Math.floor(settings.maxBudgetPerTicket * 1e9), // Convert SOL to lamports
+        totalBudget: Math.floor(settings.totalBudget * 1e9),
+        autoPurchaseEnabled: settings.autoPurchaseEnabled,
+        autoPurchaseThreshold: Math.floor(settings.autoPurchaseThreshold * 100), // Convert % to bps
+        maxTicketsPerEvent: settings.maxTicketsPerEvent,
+      });
+
+      // Wait a bit for the transaction to be confirmed and account to be created
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      // Refresh the agent list
+      await refresh();
+
+      // Show success message
+      alert(` Agent "${settings.name}" created successfully!\n\nTransaction: ${tx}`);
+
+      // Reset form
+      setSettings({
+        agentId: '',
+        name: '',
+        maxBudgetPerTicket: 0.5,
+        totalBudget: 1,
+        autoPurchaseEnabled: true,
+        autoPurchaseThreshold: 90,
+        maxTicketsPerEvent: 4,
+      });
+
+      // Close modal if provided
+      onClose?.();
+    } catch (error) {
+      console.error('Failed to create agent:', error);
+      alert(`Failed to create agent: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setLoading(false);
+    }
+  }, [settings, createAgent, refresh, onClose]);
 
   return (
     <NeoCard className="p-6">
@@ -40,20 +95,39 @@ export const AgentSettings = ({ onSave }: AgentSettingsProps) => {
       >
         <h3 className="font-display font-bold text-2xl mb-6 flex items-center gap-3">
           <span className="w-3 h-3 bg-neo-green rounded-full animate-pulse"></span>
-          AGENT CONFIGURATION
+          CREATE NEW AGENT
         </h3>
 
         <div className="space-y-6">
           <div className="grid grid-cols-2 gap-4">
             <NeoInput
+              label="Agent ID"
+              type="text"
+              placeholder="e.g., MY_AGENT_001"
+              value={settings.agentId}
+              onChange={(e) => setSettings({ ...settings, agentId: e.target.value })}
+            />
+            <NeoInput
+              label="Agent Name"
+              type="text"
+              placeholder="e.g., Ticket Hunter"
+              value={settings.name}
+              onChange={(e) => setSettings({ ...settings, name: e.target.value })}
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <NeoInput
               label="Max Budget Per Ticket (SOL)"
               type="number"
+              step="0.01"
               value={settings.maxBudgetPerTicket}
               onChange={(e) => setSettings({ ...settings, maxBudgetPerTicket: Number(e.target.value) })}
             />
             <NeoInput
               label="Total Budget (SOL)"
               type="number"
+              step="0.01"
               value={settings.totalBudget}
               onChange={(e) => setSettings({ ...settings, totalBudget: Number(e.target.value) })}
             />
@@ -74,34 +148,19 @@ export const AgentSettings = ({ onSave }: AgentSettingsProps) => {
             />
           </div>
 
-          <div className="border-t-4 border-neo-black pt-6 space-y-4">
-            <h4 className="font-display font-bold text-lg">PREFERENCE FLAGS</h4>
-
-            <NeoToggle
-              label="Auto-Purchase"
-              checked={settings.autoPurchaseEnabled}
-              onChange={(checked) => setSettings({ ...settings, autoPurchaseEnabled: checked })}
-            />
-
-            <NeoToggle
-              label="Require Verification"
-              checked={settings.requireVerification}
-              onChange={(checked) => setSettings({ ...settings, requireVerification: checked })}
-            />
-
-            <NeoToggle
-              label="Allow Agent Coordination"
-              checked={settings.allowCoordination}
-              onChange={(checked) => setSettings({ ...settings, allowCoordination: checked })}
-            />
-          </div>
+          <NeoToggle
+            label="Auto-Purchase Enabled"
+            checked={settings.autoPurchaseEnabled}
+            onChange={(checked) => setSettings({ ...settings, autoPurchaseEnabled: checked })}
+          />
 
           <NeoButton
             variant="primary"
             className="w-full"
             onClick={handleSave}
+            disabled={loading || !settings.agentId || !settings.name}
           >
-            SAVE CONFIGURATION
+            {loading ? 'CREATING AGENT...' : 'CREATE AGENT'}
           </NeoButton>
         </div>
       </motion.div>

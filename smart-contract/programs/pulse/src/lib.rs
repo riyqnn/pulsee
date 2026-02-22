@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 
-declare_id!("46AaMsoX9xU6Ydeohp5YgWnK7PT3b4hPiw8s7L3GsskH");
+declare_id!("DUJBE41hSUh178BujH79WtirW8p9A3aA3WNCdk6ibyPp");
 
 #[program]
 pub mod pulse {
@@ -216,6 +216,57 @@ pub mod pulse {
         Ok(())
     }
 
+    pub fn activate_agent(
+        ctx: Context<ManageAgent>,
+    ) -> Result<()> {
+        let agent = &mut ctx.accounts.agent;
+        
+        agent.is_active = true;
+        agent.last_active = Clock::get()?.unix_timestamp;
+        
+        msg!("Agent activated: {}", agent.agent_id);
+        Ok(())
+    }
+
+    pub fn deactivate_agent(
+        ctx: Context<ManageAgent>,
+    ) -> Result<()> {
+        let agent = &mut ctx.accounts.agent;
+        
+        agent.is_active = false;
+        
+        msg!("Agent deactivated: {}", agent.agent_id);
+        Ok(())
+    }
+
+    pub fn add_agent_budget(
+        ctx: Context<ManageAgent>,
+        amount: u64,
+    ) -> Result<()> {
+        let agent = &mut ctx.accounts.agent;
+        
+        require!(amount > 0, TixError::InsufficientAgentBudget);
+        
+        agent.total_budget = agent.total_budget.checked_add(amount)
+            .ok_or(TixError::MathOverflow)?;
+        agent.last_active = Clock::get()?.unix_timestamp;
+        
+        msg!("Agent budget increased by {} lamports", amount);
+        Ok(())
+    }
+
+    pub fn toggle_auto_purchase(
+        ctx: Context<ManageAgent>,
+    ) -> Result<()> {
+        let agent = &mut ctx.accounts.agent;
+        
+        agent.auto_purchase_enabled = !agent.auto_purchase_enabled;
+        agent.last_active = Clock::get()?.unix_timestamp;
+        
+        msg!("Agent auto-purchase toggled: {}", agent.auto_purchase_enabled);
+        Ok(())
+    }
+
     /// =====================================
     /// PRIMARY MARKET INSTRUCTIONS
     /// =====================================
@@ -256,6 +307,63 @@ pub mod pulse {
         user.tickets_purchased += 1;
 
         msg!("Ticket purchased for event: {}, tier: {}, price: {}", event.event_id, tier_id, price);
+        Ok(())
+    }
+
+    pub fn buy_ticket_with_agent(
+        ctx: Context<BuyTicketWithAgent>,
+        tier_id: String,
+        _price_deal_bps: u16,
+    ) -> Result<()> {
+        let event = &mut ctx.accounts.event;
+        let tier = &mut ctx.accounts.tier;
+        let agent = &mut ctx.accounts.agent;
+        let user = &mut ctx.accounts.user;
+        let clock = Clock::get()?;
+
+        // Validate event and tier
+        require!(event.is_active, TixError::EventNotActive);
+        require!(!event.is_cancelled, TixError::EventAlreadyCancelled);
+        require!(clock.unix_timestamp >= event.sale_start_time, TixError::EventNotActive);
+        require!(clock.unix_timestamp <= event.sale_end_time, TixError::EventNotActive);
+        require!(tier.is_active, TixError::TierNotActive);
+        require!(tier.current_supply < tier.max_supply, TixError::TierSoldOut);
+
+        // Validate agent
+        require!(agent.is_active, TixError::AgentInactive);
+        require!(agent.auto_purchase_enabled, TixError::AgentAutoPurchaseDisabled);
+
+        let price = tier.price;
+
+        // Check agent budget
+        require!(agent.spent_budget + price <= agent.total_budget, TixError::InsufficientAgentBudget);
+        require!(price <= agent.max_budget_per_ticket, TixError::InsufficientAgentBudget);
+
+        // Transfer payment from agent owner
+        **ctx.accounts.agent_owner.to_account_info().try_borrow_mut_lamports()? -= price;
+        **ctx.accounts.organizer.to_account_info().try_borrow_mut_lamports()? += price;
+
+        // Update agent budget
+        agent.spent_budget += price;
+        agent.tickets_purchased += 1;
+        agent.last_active = clock.unix_timestamp;
+
+        // Update tier supply
+        tier.current_supply += 1;
+
+        // Update event stats
+        event.total_tickets_sold += 1;
+        event.total_revenue += price;
+
+        // Update user stats
+        user.tickets_owned += 1;
+        user.total_spent += price;
+        user.tickets_purchased += 1;
+
+        msg!(
+            "Agent {} purchased ticket for event: {}, tier: {}, price: {}",
+            agent.agent_id, event.event_id, tier_id, price
+        );
         Ok(())
     }
 
@@ -639,6 +747,17 @@ pub struct CreateAIAgent<'info> {
 }
 
 #[derive(Accounts)]
+pub struct ManageAgent<'info> {
+    #[account(
+        mut,
+        constraint = agent.owner == owner.key() @ TixError::InvalidAuthority
+    )]
+    pub agent: Account<'info, AIAgent>,
+    #[account(mut)]
+    pub owner: Signer<'info>,
+}
+
+#[derive(Accounts)]
 #[instruction(tier_id: String)]
 pub struct BuyTicket<'info> {
     #[account(mut)]
@@ -667,6 +786,54 @@ pub struct BuyTicket<'info> {
     pub organizer: UncheckedAccount<'info>,
     #[account(mut)]
     pub buyer: Signer<'info>,
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+#[instruction(tier_id: String)]
+pub struct BuyTicketWithAgent<'info> {
+    #[account(mut)]
+    pub event: Account<'info, Event>,
+    #[account(
+        mut,
+        seeds = [
+            b"tier",
+            event.key().as_ref(),
+            tier_id.as_bytes()
+        ],
+        bump = tier.bump
+    )]
+    pub tier: Account<'info, TicketTier>,
+    #[account(
+        mut,
+        seeds = [
+            b"agent",
+            agent_owner.key().as_ref(),
+            agent.agent_id.as_bytes()
+        ],
+        bump = agent.bump
+    )]
+    pub agent: Account<'info, AIAgent>,
+    #[account(
+        mut,
+        seeds = [b"user", agent.owner.as_ref()],
+        bump = user.bump
+    )]
+    pub user: Account<'info, User>,
+    /// CHECK: Agent owner's wallet
+    #[account(
+        mut,
+        constraint = agent_owner.key() == agent.owner
+    )]
+    pub agent_owner: UncheckedAccount<'info>,
+    /// CHECK: Organizer wallet
+    #[account(
+        mut,
+        constraint = organizer.key() == event.organizer
+    )]
+    pub organizer: UncheckedAccount<'info>,
+    /// CHECK: Agent owner as signer
+    pub agent_owner_signer: Signer<'info>,
     pub system_program: Program<'info, System>,
 }
 
@@ -776,6 +943,8 @@ pub enum TixError {
     AgentInactive,
     #[msg("Insufficient agent budget")]
     InsufficientAgentBudget,
+    #[msg("Agent auto-purchase is disabled")]
+    AgentAutoPurchaseDisabled,
     #[msg("Listing has expired")]
     ListingExpired,
     #[msg("Invalid price")]

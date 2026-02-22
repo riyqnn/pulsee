@@ -95,6 +95,42 @@
     color: var(--color-neo-black);
   }
 
+  .btn-neo-danger {
+    background-color: #ef4444;
+    color: var(--color-neo-white);
+  }
+
+  .btn-neo-danger:hover {
+    background-color: #dc2626;
+  }
+
+  .btn-neo-success {
+    background-color: var(--color-neo-green);
+    color: var(--color-neo-black);
+  }
+
+  .btn-neo-success:hover {
+    background-color: #00cc33;
+  }
+
+  .btn-neo-warning {
+    background-color: #f59e0b;
+    color: var(--color-neo-black);
+  }
+
+  .btn-neo-warning:hover {
+    background-color: #d97706;
+  }
+
+  .btn-neo-secondary {
+    background-color: var(--color-neo-gray);
+    color: var(--color-neo-black);
+  }
+
+  .btn-neo-secondary:hover {
+    background-color: #e5e5e5;
+  }
+
   /* Neo Card */
   .card-neo {
     position: relative;
@@ -267,4 +303,169 @@
     padding: 0.5rem 1rem;
     display: inline-block;
   }
+}
+
+/* ============================================
+   EVENT DETAIL MODAL ENHANCEMENTS
+   ============================================ */
+
+/* Modal entrance animation */
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* Ticket card hover effect */
+.ticket-tier-card {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.ticket-tier-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-neo-hover);
+}
+
+/* Glowing effect for available tickets */
+@keyframes glow {
+  0%, 100% {
+    box-shadow: 0 0 5px var(--color-neo-green), 0 0 10px var(--color-neo-green);
+  }
+  50% {
+    box-shadow: 0 0 10px var(--color-neo-green), 0 0 20px var(--color-neo-green);
+  }
+}
+
+.ticket-available {
+  animation: glow 2s ease-in-out infinite;
+}
+
+/* Pulse animation for "GET TICKETS" button */
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+.btn-get-tickets {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.btn-get-tickets:hover {
+  animation: none;
+}
+
+/* Progress bar animation */
+@keyframes progressFill {
+  from {
+    width: 0%;
+  }
+}
+
+.ticket-progress {
+  animation: progressFill 1s ease-out forwards;
+}
+
+/* Shimmer effect for loading states */
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--color-neo-gray) 0%,
+    #ffffff 50%,
+    var(--color-neo-gray) 100%
+  );
+  background-size: 1000px 100%;
+  animation: shimmer 2s infinite;
+}
+
+/* Blur backdrop for modal */
+.modal-backdrop {
+  backdrop-filter: blur(8px);
+}
+
+/* Badge glow effects */
+.badge-green-glow {
+  box-shadow: 0 0 10px rgba(0, 255, 65, 0.5);
+}
+
+.badge-pink-glow {
+  box-shadow: 0 0 10px rgba(255, 0, 245, 0.5);
+}
+
+/* Event image zoom on hover */
+.event-image-container {
+  overflow: hidden;
+}
+
+.event-image-container img {
+  transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.event-image-container:hover img {
+  transform: scale(1.1);
+}
+
+/* Button press effect */
+.button-press:active {
+  transform: scale(0.98);
+  box-shadow: var(--shadow-neo-sm);
+}
+
+/* Sticker effect for "SOLD OUT" */
+.stamp-sold-out {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.stamp-text {
+  font-family: var(--font-display);
+  font-size: 3rem;
+  font-weight: 800;
+  color: rgba(255, 0, 245, 0.3);
+  border: 8px solid rgba(255, 0, 245, 0.3);
+  padding: 1rem 2rem;
+  transform: rotate(-15deg);
+  text-shadow: 2px 2px 0 var(--color-neo-black);
+  background: rgba(255, 255, 255, 0.9);
+}
+
+/* Tier price highlight */
+.tier-price {
+  background: linear-gradient(135deg, var(--color-neo-green) 0%, #00cc33 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Close button hover effect */
+.close-button {
+  transition: all 0.2s ease;
+}
+
+.close-button:hover {
+  transform: rotate(90deg);
+  background: var(--color-neo-pink);
+  color: var(--color-neo-white);
 }

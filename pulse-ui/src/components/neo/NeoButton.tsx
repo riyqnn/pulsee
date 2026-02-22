@@ -1,7 +1,9 @@
 import { motion } from 'framer-motion';
 
+type ButtonVariant = 'default' | 'primary' | 'accent' | 'danger' | 'success' | 'warning' | 'secondary';
+
 interface NeoButtonProps {
-  variant?: 'default' | 'primary' | 'accent';
+  variant?: ButtonVariant;
   size?: 'sm' | 'md' | 'lg';
   children: React.ReactNode;
   className?: string;
@@ -18,10 +20,14 @@ export const NeoButton = ({
   onClick,
 }: NeoButtonProps) => {
   const baseClasses = 'btn-neo';
-  const variantClasses = {
+  const variantClasses: Record<ButtonVariant, string> = {
     default: '',
     primary: 'btn-neo-primary',
     accent: 'btn-neo-accent',
+    danger: 'btn-neo-danger',
+    success: 'btn-neo-success',
+    warning: 'btn-neo-warning',
+    secondary: 'btn-neo-secondary',
   };
 
   const sizeClasses = {

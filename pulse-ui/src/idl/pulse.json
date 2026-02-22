@@ -1,5 +1,5 @@
 {
-  "address": "46AaMsoX9xU6Ydeohp5YgWnK7PT3b4hPiw8s7L3GsskH",
+  "address": "DUJBE41hSUh178BujH79WtirW8p9A3aA3WNCdk6ibyPp",
   "metadata": {
     "name": "pulse",
     "version": "0.1.0",
@@ -7,6 +7,61 @@
     "description": "TixProtocol - AI-Powered Ticketing Protocol"
   },
   "instructions": [
+    {
+      "name": "activate_agent",
+      "discriminator": [
+        252,
+        139,
+        87,
+        21,
+        195,
+        152,
+        29,
+        217
+      ],
+      "accounts": [
+        {
+          "name": "agent",
+          "writable": true
+        },
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "add_agent_budget",
+      "discriminator": [
+        185,
+        104,
+        153,
+        32,
+        53,
+        77,
+        186,
+        55
+      ],
+      "accounts": [
+        {
+          "name": "agent",
+          "writable": true
+        },
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
     {
       "name": "buy_listed_ticket",
       "discriminator": [
@@ -178,6 +233,125 @@
         {
           "name": "tier_id",
           "type": "string"
+        }
+      ]
+    },
+    {
+      "name": "buy_ticket_with_agent",
+      "discriminator": [
+        17,
+        81,
+        230,
+        3,
+        232,
+        248,
+        161,
+        82
+      ],
+      "accounts": [
+        {
+          "name": "event",
+          "writable": true
+        },
+        {
+          "name": "tier",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  105,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "event"
+              },
+              {
+                "kind": "arg",
+                "path": "tier_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "agent",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  103,
+                  101,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "agent_owner"
+              },
+              {
+                "kind": "account",
+                "path": "agent.agent_id",
+                "account": "AIAgent"
+              }
+            ]
+          }
+        },
+        {
+          "name": "user",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  117,
+                  115,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "agent.owner",
+                "account": "AIAgent"
+              }
+            ]
+          }
+        },
+        {
+          "name": "agent_owner",
+          "writable": true
+        },
+        {
+          "name": "organizer",
+          "writable": true
+        },
+        {
+          "name": "agent_owner_signer",
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "tier_id",
+          "type": "string"
+        },
+        {
+          "name": "_price_deal_bps",
+          "type": "u16"
         }
       ]
     },
@@ -507,6 +681,31 @@
       ]
     },
     {
+      "name": "deactivate_agent",
+      "discriminator": [
+        205,
+        171,
+        239,
+        225,
+        82,
+        126,
+        96,
+        166
+      ],
+      "accounts": [
+        {
+          "name": "agent",
+          "writable": true
+        },
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "initialize_config",
       "docs": [
         "=====================================",
@@ -676,6 +875,31 @@
           "type": "i64"
         }
       ]
+    },
+    {
+      "name": "toggle_auto_purchase",
+      "discriminator": [
+        162,
+        243,
+        245,
+        180,
+        170,
+        74,
+        223,
+        227
+      ],
+      "accounts": [
+        {
+          "name": "agent",
+          "writable": true
+        },
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true
+        }
+      ],
+      "args": []
     }
   ],
   "accounts": [
@@ -844,36 +1068,41 @@
     },
     {
       "code": 6014,
+      "name": "AgentAutoPurchaseDisabled",
+      "msg": "Agent auto-purchase is disabled"
+    },
+    {
+      "code": 6015,
       "name": "ListingExpired",
       "msg": "Listing has expired"
     },
     {
-      "code": 6015,
+      "code": 6016,
       "name": "InvalidPrice",
       "msg": "Invalid price"
     },
     {
-      "code": 6016,
+      "code": 6017,
       "name": "PriceCapExceeded",
       "msg": "Price exceeds maximum allowed"
     },
     {
-      "code": 6017,
+      "code": 6018,
       "name": "CannotListAfterEventStart",
       "msg": "Cannot list after event has started"
     },
     {
-      "code": 6018,
+      "code": 6019,
       "name": "TicketConsumed",
       "msg": "Ticket has been consumed and cannot be sold"
     },
     {
-      "code": 6019,
+      "code": 6020,
       "name": "MathOverflow",
       "msg": "Math operation overflow"
     },
     {
-      "code": 6020,
+      "code": 6021,
       "name": "MathUnderflow",
       "msg": "Math operation underflow"
     }

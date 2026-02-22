@@ -2,17 +2,25 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AgentCommandCenter } from './components/agent';
 import { MarketplaceGrid, SecondaryMarket } from './components/marketplace';
+import { MyTickets } from './components/MyTickets';
 import { WalletButton } from './components/WalletButton';
+import { AgentsProvider, useAgentsContext } from './contexts/AgentsContext';
+import { EventsProvider } from './contexts/EventsContext';
+import { MarketProvider } from './contexts/MarketContext';
+import { useProgram } from './hooks/useProgram';
 
-type Tab = 'agents' | 'marketplace' | 'secondary';
+type Tab = 'agents' | 'marketplace' | 'secondary' | 'tickets';
 
-function App() {
+function AppContent() {
   const [activeTab, setActiveTab] = useState<Tab>('agents');
+  const { connectionStatus, programId, publicKey } = useProgram();
+  const { activeAgents } = useAgentsContext();
 
-  const tabs: { id: Tab; label: string; count?: string }[] = [
-    { id: 'agents', label: 'AGENT COMMAND', count: '3' },
+  const tabs: { id: Tab; label: string; count?: string | number }[] = [
+    { id: 'agents', label: 'AGENT COMMAND', count: activeAgents },
     { id: 'marketplace', label: 'MARKETPLACE' },
     { id: 'secondary', label: 'SECONDARY', count: 'LIVE' },
+    { id: 'tickets', label: 'MY TICKETS' },
   ];
 
   const getTabClass = (isActive: boolean) => `
@@ -74,7 +82,7 @@ function App() {
                 whileTap={{ scale: 0.98 }}
               >
                 {tab.label}
-                {tab.count && (
+                {tab.count !== undefined && (
                   <span className="ml-2 font-mono text-sm bg-black text-white px-2 py-0.5 border-2 border-black">
                     {tab.count}
                   </span>
@@ -98,6 +106,9 @@ function App() {
             {activeTab === 'agents' && <AgentCommandCenter />}
             {activeTab === 'marketplace' && <MarketplaceGrid />}
             {activeTab === 'secondary' && <SecondaryMarket />}
+            {activeTab === 'tickets' && publicKey && (
+              <MyTickets ownerPublicKey={publicKey} />
+            )}
           </motion.div>
         </AnimatePresence>
       </main>
@@ -116,13 +127,21 @@ function App() {
               <h4 className="font-display font-bold text-xl mb-4">CONTRACTS</h4>
               <div className="font-mono text-xs space-y-1">
                 <p style={{ color: 'var(--color-neo-pink)' }}>Program ID:</p>
-                <p className="break-all">46AaM...7L3GsskH</p>
+                <p className="break-all">{programId?.toBase58().slice(0, 8)}...{programId?.toBase58().slice(-8)}</p>
               </div>
             </div>
             <div>
               <h4 className="font-display font-bold text-xl mb-4">NETWORK</h4>
               <p className="font-mono text-sm">Solana Devnet</p>
-              <p className="font-mono text-xs mt-2" style={{ color: 'var(--color-neo-green)' }}>● Connected</p>
+              {connectionStatus && (
+                <div className="flex items-center gap-2 mt-2">
+                  <span className={`w-2 h-2 rounded-full ${connectionStatus.connected ? 'bg-neo-green' : 'bg-neo-pink'}`} />
+                  <span className="font-mono text-xs">{connectionStatus.connected ? 'Connected' : 'Disconnected'}</span>
+                </div>
+              )}
+              {connectionStatus?.slot && (
+                <p className="font-mono text-xs mt-1">Slot: {connectionStatus.slot.toLocaleString()}</p>
+              )}
             </div>
           </div>
           <div className="border-t-2 border-white mt-8 pt-8 text-center font-mono text-xs">
@@ -131,6 +150,18 @@ function App() {
         </div>
       </footer>
     </div>
+  );
+}
+
+function App() {
+  return (
+    <AgentsProvider>
+      <EventsProvider autoRefresh={false}>
+        <MarketProvider>
+          <AppContent />
+        </MarketProvider>
+      </EventsProvider>
+    </AgentsProvider>
   );
 }
 
