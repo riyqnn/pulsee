@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Routes, Route, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AgentCommandCenter } from './components/agent';
 import { MarketplaceGrid, SecondaryMarket } from './components/marketplace';
@@ -8,10 +9,11 @@ import { AgentsProvider, useAgentsContext } from './contexts/AgentsContext';
 import { EventsProvider } from './contexts/EventsContext';
 import { MarketProvider } from './contexts/MarketContext';
 import { useProgram } from './hooks/useProgram';
+import LandingPage from './components/landing/LandingPage';
 
 type Tab = 'agents' | 'marketplace' | 'secondary' | 'tickets';
 
-function AppContent() {
+function MainApp() {
   const [activeTab, setActiveTab] = useState<Tab>('agents');
   const { connectionStatus, programId, publicKey } = useProgram();
   const { activeAgents } = useAgentsContext();
@@ -50,9 +52,9 @@ function AppContent() {
               animate={{ opacity: 1, x: 0 }}
               className="flex items-center gap-4"
             >
-              <h1 className="font-display font-extrabold text-4xl sm:text-5xl tracking-tighter">
+              <Link to="/home" className="font-display font-extrabold text-4xl sm:text-5xl tracking-tighter">
                 PULSE
-              </h1>
+              </Link>
               <span className="hidden sm:inline-block font-mono text-sm bg-black text-white px-3 py-1 border-2 border-black">
                 v1.0.0
               </span>
@@ -155,13 +157,10 @@ function AppContent() {
 
 function App() {
   return (
-    <AgentsProvider>
-      <EventsProvider autoRefresh={false}>
-        <MarketProvider>
-          <AppContent />
-        </MarketProvider>
-      </EventsProvider>
-    </AgentsProvider>
+    <Routes>
+      <Route path="/" element={<MainApp />} />
+      <Route path="/home" element={<LandingPage />} />
+    </Routes>
   );
 }
 

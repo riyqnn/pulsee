@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Public+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
 
 @import "tailwindcss";
 
@@ -9,7 +9,7 @@
   --color-neo-white: #FFFFFF;
   --color-neo-gray: #F5F5F5;
 
-  --font-display: 'Syne', system-ui, sans-serif;
+  --font-display: 'Inter', 'Public Sans', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
 
   --shadow-neo: 8px 8px 0px 0px #000000;
