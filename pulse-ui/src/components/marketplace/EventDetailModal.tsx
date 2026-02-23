@@ -27,14 +27,14 @@ interface EventDetailModalProps {
 }
 
 export const EventDetailModal = ({ event, onClose }: EventDetailModalProps) => {
-  const { buyTicket, buyTicketWithAgent, isReady } = usePrimaryMarket();
+  const { buyTicket, isReady } = usePrimaryMarket();
   const { publicKey } = useWallet();
   const { agents, refresh } = useAgentsContext();
   const [loading, setLoading] = useState(false);
   const [selectedTier, setSelectedTier] = useState<string | null>(null);
 
-  // Get the first active agent
-  const activeAgent = agents.find(a => a.account.isActive && a.account.autoPurchaseEnabled);
+  // Get the first active agent (simplified - no autoPurchaseEnabled check)
+  const activeAgent = agents.find(a => a.account.isActive);
 
   useEffect(() => {
     document.body.style.overflow = 'hidden';
@@ -67,21 +67,19 @@ export const EventDetailModal = ({ event, onClose }: EventDetailModalProps) => {
     setSelectedTier(tierId);
 
     try {
+      // Direct buy with agent (simplified - buyTicketWithAgent removed)
+      // For MVP, use escrow-based purchase via scheduler
       if (useAgentForPurchase && activeAgent) {
-        await buyTicketWithAgent({
-          eventPDA: event.publicKey,
-          tierId: tierId,
-          agentPDA: activeAgent.publicKey,
-          priceDealBps: 0,
-        });
-        alert('AGENT PURCHASED TICKET SUCCESSFULLY');
-      } else {
-        await buyTicket({
-          eventPDA: event.publicKey,
-          tierId: tierId,
-        });
-        alert('TICKET PURCHASED SUCCESSFULLY');
+        alert('Use Escrow Dashboard to purchase with agent. Direct purchase via agent not available in MVP.');
+        return;
       }
+
+      // Direct buy ticket (also removed in MVP)
+      await buyTicket({
+        eventPDA: event.publicKey,
+        tierId: tierId,
+      });
+      alert('TICKET PURCHASED SUCCESSFULLY');
       onClose();
     } catch (error: any) {
       console.error('Failed to buy ticket:', error);

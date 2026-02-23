@@ -76,10 +76,8 @@ export const AgentsProvider: React.FC<AgentsProviderProps> = ({
     const spent = Number(a.account.spentBudget || 0) / 1e9;
     return sum + (isNaN(spent) ? 0 : spent);
   }, 0);
-  const totalMoneySaved = agents.reduce((sum, a) => {
-    const saved = Number(a.account.moneySaved || 0) / 1e9;
-    return sum + (isNaN(saved) ? 0 : saved);
-  }, 0);
+  // moneySaved removed in simplified MVP
+  const totalMoneySaved = 0;
 
   /**
    * Refresh all agents

@@ -2,30 +2,30 @@ import { motion } from 'framer-motion';
 import { EventCard } from './EventCard';
 import { useEventsContext } from '../../contexts/EventsContext';
 import { useEvents } from '../../hooks/useEvents';
-import { formatTimestamp } from '../../utils/accounts';
 import { useEffect, useState, useCallback } from 'react';
 
 export const MarketplaceGrid = () => {
-  const { events, loading, getEventsOnSale } = useEventsContext();
+  const { events, loading, getActiveEvents } = useEventsContext();
   const { getEventTiers } = useEvents();
   const [eventsWithTiers, setEventsWithTiers] = useState<any[]>([]);
 
   const loadEventsWithTiers = useCallback(async () => {
-    const onSaleEvents = getEventsOnSale();
+    const activeEvents = getActiveEvents();
 
     const eventsData = await Promise.all(
-      onSaleEvents.map(async (event) => {
+      activeEvents.map(async (event) => {
         const tiers = await getEventTiers(event.publicKey);
         return {
           id: event.account.eventId,
-          name: event.account.name,
-          venue: event.account.venue,
-          date: formatTimestamp(event.account.eventStartTime),
-          image: event.account.imageUrl,
+          // Event metadata now comes from Supabase (offchain)
+          name: 'Event ' + event.account.eventId,  // Placeholder - get from Supabase
+          venue: 'TBD',  // Placeholder - get from Supabase
+          date: new Date().toLocaleDateString(),  // Placeholder - get from Supabase
+          image: undefined,  // Placeholder - get from Supabase
           soldOut: tiers.every((t) => Number(t.account.currentSupply) >= Number(t.account.maxSupply)),
           ticketTiers: tiers.map((t) => ({
             tierId: t.account.tierId,
-            name: t.account.name,
+            name: t.account.tierId,  // Using tierId as name since 'name' field removed
             price: Number(t.account.price) / 1e9,
             available: Number(t.account.maxSupply) - Number(t.account.currentSupply),
             maxSupply: Number(t.account.maxSupply),
@@ -35,7 +35,7 @@ export const MarketplaceGrid = () => {
       })
     );
     setEventsWithTiers(eventsData);
-  }, [getEventsOnSale, getEventTiers]);
+  }, [getActiveEvents, getEventTiers]);
 
   useEffect(() => {
     loadEventsWithTiers();
@@ -82,7 +82,7 @@ export const MarketplaceGrid = () => {
         </div>
       ) : eventsWithTiers.length === 0 ? (
         <div className="text-center py-20 border-4 border-black bg-neutral-100">
-          <div className="font-mono text-xl font-bold text-neutral-600">NO EVENTS CURRENTLY ON SALE</div>
+          <div className="font-mono text-xl font-bold text-neutral-600">NO EVENTS CURRENTLY ACTIVE</div>
           <div className="font-mono text-sm text-neutral-500 mt-2">CHECK BACK SOON</div>
         </div>
       ) : (

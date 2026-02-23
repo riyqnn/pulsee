@@ -1,7 +1,7 @@
-// Events Context Provider
+// Events Context Provider - Simplified MVP
 // Provides global events data and operations
 
-import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, useMemo } from 'react';
 import type { ReactNode } from 'react';
 import { PublicKey } from '@solana/web3.js';
 import { useEvents } from '../hooks/useEvents';
@@ -25,7 +25,6 @@ interface EventsContextValue {
 
   // Filtering
   getActiveEvents: () => ProgramAccount<Event>[];
-  getEventsOnSale: () => ProgramAccount<Event>[];
   getEventsByOrganizer: (organizer: PublicKey) => ProgramAccount<Event>[];
 }
 
@@ -33,8 +32,8 @@ const EventsContext = createContext<EventsContextValue | undefined>(undefined);
 
 interface EventsProviderProps {
   children: ReactNode;
-  autoRefresh?: boolean; // Auto-refresh every 30 seconds
-  refreshInterval?: number; // In milliseconds
+  autoRefresh?: boolean;
+  refreshInterval?: number;
 }
 
 export const EventsProvider: React.FC<EventsProviderProps> = ({
@@ -42,9 +41,9 @@ export const EventsProvider: React.FC<EventsProviderProps> = ({
   autoRefresh = true,
   refreshInterval = 30000,
 }) => {
-  const { getAllEvents, isEventOnSale } = useEvents();
+  const { getAllEvents, getEventTiers: fetchEventTiers } = useEvents();
   const [events, setEvents] = useState<ProgramAccount<Event>[]>([]);
-  const [eventTiers, _setEventTiers] = useState<Map<string, ProgramAccount<TicketTier>[]>>(new Map());
+  const [eventTiers, setEventTiers] = useState<Map<string, ProgramAccount<TicketTier>[]>>(new Map());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [lastUpdated, setLastUpdated] = useState<number | null>(null);
@@ -60,7 +59,7 @@ export const EventsProvider: React.FC<EventsProviderProps> = ({
   }, [events]);
 
   /**
-   * Refresh all events
+   * Refresh all events and their tiers
    */
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -69,6 +68,19 @@ export const EventsProvider: React.FC<EventsProviderProps> = ({
     try {
       const fetchedEvents = await getAllEvents();
       setEvents(fetchedEvents);
+
+      // Fetch tiers for each event
+      const tiersMap = new Map<string, ProgramAccount<TicketTier>[]>();
+      for (const event of fetchedEvents) {
+        try {
+          const tiers = await fetchEventTiers(event.publicKey);
+          tiersMap.set(event.publicKey.toBase58(), tiers);
+        } catch (err) {
+          console.error(`[EventsContext] Error fetching tiers for event ${event.publicKey.toBase58()}:`, err);
+        }
+      }
+      setEventTiers(tiersMap);
+
       setLastUpdated(Date.now());
     } catch (err) {
       console.error('[EventsContext] Error fetching events:', err);
@@ -76,7 +88,7 @@ export const EventsProvider: React.FC<EventsProviderProps> = ({
     } finally {
       setLoading(false);
     }
-  }, [getAllEvents]);
+  }, [getAllEvents, fetchEventTiers]);
 
   /**
    * Get an event by its event ID
@@ -109,7 +121,8 @@ export const EventsProvider: React.FC<EventsProviderProps> = ({
       const tiers = eventTiers.get(pubkey.toBase58()) || [];
 
       return {
-        ...event.account,
+        publicKey: event.publicKey,
+        account: event.account,
         tiers: tiers.map((t) => t.account),
       };
     },
@@ -130,19 +143,8 @@ export const EventsProvider: React.FC<EventsProviderProps> = ({
    * Get all active events
    */
   const getActiveEvents = useCallback((): ProgramAccount<Event>[] => {
-    return events.filter((e) => e.account.isActive && !e.account.isCancelled);
+    return events.filter((e) => e.account.isActive);
   }, [events]);
-
-  /**
-   * Get all events currently on sale
-   */
-  const getEventsOnSale = useCallback((): ProgramAccount<Event>[] => {
-    const onSale = events.filter((e) => {
-      const result = isEventOnSale(e.account);
-      return result;
-    });
-    return onSale;
-  }, [events, isEventOnSale]);
 
   /**
    * Get events by organizer
@@ -188,7 +190,6 @@ export const EventsProvider: React.FC<EventsProviderProps> = ({
 
     // Filtering
     getActiveEvents,
-    getEventsOnSale,
     getEventsByOrganizer,
   };
 
@@ -206,6 +207,3 @@ export const useEventsContext = (): EventsContextValue => {
 
   return context;
 };
-
-// Import useMemo
-import { useMemo } from 'react';

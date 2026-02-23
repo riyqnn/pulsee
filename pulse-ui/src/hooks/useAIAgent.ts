@@ -1,4 +1,4 @@
-// AI Agent Operations Hook
+// AI Agent Operations Hook - Simplified for MVP
 // Handles all agent-related transactions and queries
 
 import { useMemo, useState, useCallback } from 'react';
@@ -8,27 +8,53 @@ import { useProgram } from './useProgram';
 import { useWallet } from '@solana/wallet-adapter-react';
 import {
   getAgentPDA,
+  getEscrowPDA,
+  getEventPDA,
+  getTierPDA,
   fetchUserAgents,
   fetchAgent,
+  fetchEscrow,
 } from '../utils/accounts';
 import type {
-  CreateAIAgentInput,
   AIAgent,
+  AgentEscrow,
   ProgramAccount,
 } from '../types/pulse';
 import { PROGRAM_ID } from './useProgram';
 
+interface CreateAgentInput {
+  agentId: string;
+  maxBudgetPerTicket: number | bigint;
+  totalBudget: number | bigint;
+}
+
 interface UseAIAgentReturn {
   // Operations
-  createAgent: (config: CreateAIAgentInput) => Promise<string>;
-  activateAgent: (agentPDA: PublicKey) => Promise<string>;
-  deactivateAgent: (agentPDA: PublicKey) => Promise<string>;
-  addBudget: (agentPDA: PublicKey, amount: number) => Promise<string>;
-  toggleAutoPurchase: (agentPDA: PublicKey) => Promise<string>;
+  createAgent: (config: CreateAgentInput) => Promise<string>;
+  createEscrow: (agentPDA: PublicKey) => Promise<string>;
+  depositToEscrow: (escrowPDA: PublicKey, agentPDA: PublicKey, amountLamports: number) => Promise<string>;
+  withdrawFromEscrow: (escrowPDA: PublicKey, agentPDA: PublicKey, amountLamports: number) => Promise<string>;
+
+  // Agent control methods
+  activateAgent: (agentPDA: PublicKey, agentId: string) => Promise<string>;
+  deactivateAgent: (agentPDA: PublicKey, agentId: string) => Promise<string>;
+  toggleAutoPurchase: (agentPDA: PublicKey, agentId: string, enabled: boolean) => Promise<string>;
+  addAgentBudget: (agentPDA: PublicKey, agentId: string, amountLamports: number) => Promise<string>;
+  updateAgentConfig: (agentPDA: PublicKey, agentId: string, maxBudgetPerTicket?: number, autoPurchaseThreshold?: number) => Promise<string>;
+
+  // Core function - buy ticket with escrow
+  buyTicketWithEscrow: (
+    agentOwner: string,
+    agentId: string,
+    organizer: string,
+    eventId: string,
+    tierId: string
+  ) => Promise<string>;
 
   // Queries
   getUserAgents: () => Promise<ProgramAccount<AIAgent>[]>;
   getAgent: (agentPDA: PublicKey) => Promise<AIAgent | null>;
+  getEscrow: (escrowPDA: PublicKey) => Promise<AgentEscrow | null>;
 
   // State
   loading: boolean;
@@ -48,10 +74,10 @@ export const useAIAgent = (): UseAIAgentReturn => {
 
   /**
    * Create a new AI agent
-   * Instruction: create_ai_agent (simplified version)
+   * Simplified version: agent_id, max_budget_per_ticket, total_budget
    */
   const createAgent = useCallback(
-    async (config: CreateAIAgentInput): Promise<string> => {
+    async (config: CreateAgentInput): Promise<string> => {
       if (!program || !publicKey) {
         throw new Error('Wallet not connected');
       }
@@ -70,16 +96,12 @@ export const useAIAgent = (): UseAIAgentReturn => {
           ? new BN(config.totalBudget.toString())
           : new BN(config.totalBudget);
 
-        // Use the simplified 7-argument version that's deployed on devnet
+        // Simplified create_ai_agent: agent_id, max_budget_per_ticket, total_budget
         const tx = await program.methods
           .createAiAgent(
             config.agentId,
-            config.name,
             maxBudgetBN,
-            totalBudgetBN,
-            config.autoPurchaseEnabled,
-            config.autoPurchaseThreshold,
-            config.maxTicketsPerEvent
+            totalBudgetBN
           )
           .accounts({
             agent: agentPDA,
@@ -101,11 +123,175 @@ export const useAIAgent = (): UseAIAgentReturn => {
   );
 
   /**
-   * Activate an AI agent
-   * Instruction: activate_agent
+   * Create escrow for an agent
+   */
+  const createEscrow = useCallback(
+    async (agentPDA: PublicKey): Promise<string> => {
+      if (!program || !publicKey) {
+        throw new Error('Wallet not connected');
+      }
+
+      setLoading(true);
+      setError(null);
+
+      try {
+        const [escrowPDA] = await getEscrowPDA(agentPDA, publicKey, PROGRAM_ID);
+
+        const tx = await program.methods
+          .createEscrow()
+          .accounts({
+            agent: agentPDA,
+            escrow: escrowPDA,
+            owner: publicKey,
+            systemProgram: SystemProgram.programId,
+          })
+          .rpc();
+
+        return tx;
+      } catch (err) {
+        const error = err as Error;
+        setError(error);
+        throw error;
+      } finally {
+        setLoading(false);
+      }
+    },
+    [program, publicKey]
+  );
+
+  /**
+   * Deposit to escrow
+   */
+  const depositToEscrow = useCallback(
+    async (escrowPDA: PublicKey, agentPDA: PublicKey, amountLamports: number): Promise<string> => {
+      if (!program || !publicKey) {
+        throw new Error('Wallet not connected');
+      }
+
+      setLoading(true);
+      setError(null);
+
+      try {
+        const amountBN = new BN(amountLamports);
+
+        const tx = await program.methods
+          .depositToEscrow(amountBN)
+          .accounts({
+            escrow: escrowPDA,
+            agent: agentPDA,
+            owner: publicKey,
+            systemProgram: SystemProgram.programId,
+          })
+          .rpc();
+
+        return tx;
+      } catch (err) {
+        const error = err as Error;
+        setError(error);
+        throw error;
+      } finally {
+        setLoading(false);
+      }
+    },
+    [program, publicKey]
+  );
+
+  /**
+   * Withdraw from escrow
+   */
+  const withdrawFromEscrow = useCallback(
+    async (escrowPDA: PublicKey, agentPDA: PublicKey, amountLamports: number): Promise<string> => {
+      if (!program || !publicKey) {
+        throw new Error('Wallet not connected');
+      }
+
+      setLoading(true);
+      setError(null);
+
+      try {
+        const amountBN = new BN(amountLamports);
+
+        const tx = await program.methods
+          .withdrawFromEscrow(amountBN)
+          .accounts({
+            escrow: escrowPDA,
+            agent: agentPDA,
+            owner: publicKey,
+            systemProgram: SystemProgram.programId,
+          })
+          .rpc();
+
+        return tx;
+      } catch (err) {
+        const error = err as Error;
+        setError(error);
+        throw error;
+      } finally {
+        setLoading(false);
+      }
+    },
+    [program, publicKey]
+  );
+
+  /**
+   * CORE FUNCTION: Buy ticket with escrow
+   * Can be called by anyone (scheduler service)
+   */
+  const buyTicketWithEscrow = useCallback(
+    async (
+      agentOwner: string,
+      agentId: string,
+      organizer: string,
+      eventId: string,
+      tierId: string
+    ): Promise<string> => {
+      if (!program || !publicKey) {
+        throw new Error('Wallet not connected');
+      }
+
+      setLoading(true);
+      setError(null);
+
+      try {
+        const agentOwnerPubkey = new PublicKey(agentOwner);
+        const organizerPubkey = new PublicKey(organizer);
+
+        // Derive all PDAs
+        const [eventPDA] = await getEventPDA(organizerPubkey, eventId, PROGRAM_ID);
+        const [tierPDA] = await getTierPDA(eventPDA, tierId, PROGRAM_ID);
+        const [agentPDA] = await getAgentPDA(agentOwnerPubkey, agentId, PROGRAM_ID);
+        const [escrowPDA] = await getEscrowPDA(agentPDA, agentOwnerPubkey, PROGRAM_ID);
+
+        const tx = await program.methods
+          .buyTicketWithEscrow(tierId)
+          .accounts({
+            event: eventPDA,
+            tier: tierPDA,
+            agent: agentPDA,
+            escrow: escrowPDA,
+            organizer: organizerPubkey,
+            authority: publicKey, // Anyone can call this
+            systemProgram: SystemProgram.programId,
+          })
+          .rpc();
+
+        return tx;
+      } catch (err) {
+        const error = err as Error;
+        setError(error);
+        throw error;
+      } finally {
+        setLoading(false);
+      }
+    },
+    [program, publicKey]
+  );
+
+  /**
+   * Activate an agent
    */
   const activateAgent = useCallback(
-    async (agentPDA: PublicKey): Promise<string> => {
+    async (agentPDA: PublicKey, _agentId: string): Promise<string> => {
       if (!program || !publicKey) {
         throw new Error('Wallet not connected');
       }
@@ -135,11 +321,10 @@ export const useAIAgent = (): UseAIAgentReturn => {
   );
 
   /**
-   * Deactivate an AI agent
-   * Instruction: deactivate_agent
+   * Deactivate an agent
    */
   const deactivateAgent = useCallback(
-    async (agentPDA: PublicKey): Promise<string> => {
+    async (agentPDA: PublicKey, _agentId: string): Promise<string> => {
       if (!program || !publicKey) {
         throw new Error('Wallet not connected');
       }
@@ -169,11 +354,43 @@ export const useAIAgent = (): UseAIAgentReturn => {
   );
 
   /**
-   * Add budget to an agent
-   * Instruction: add_agent_budget
+   * Toggle auto-purchase for an agent
    */
-  const addBudget = useCallback(
-    async (agentPDA: PublicKey, amountLamports: number): Promise<string> => {
+  const toggleAutoPurchase = useCallback(
+    async (agentPDA: PublicKey, _agentId: string, enabled: boolean): Promise<string> => {
+      if (!program || !publicKey) {
+        throw new Error('Wallet not connected');
+      }
+
+      setLoading(true);
+      setError(null);
+
+      try {
+        const tx = await program.methods
+          .toggleAutoPurchase(enabled)
+          .accounts({
+            agent: agentPDA,
+            owner: publicKey,
+          })
+          .rpc();
+
+        return tx;
+      } catch (err) {
+        const error = err as Error;
+        setError(error);
+        throw error;
+      } finally {
+        setLoading(false);
+      }
+    },
+    [program, publicKey]
+  );
+
+  /**
+   * Add budget to an agent
+   */
+  const addAgentBudget = useCallback(
+    async (agentPDA: PublicKey, _agentId: string, amountLamports: number): Promise<string> => {
       if (!program || !publicKey) {
         throw new Error('Wallet not connected');
       }
@@ -205,13 +422,15 @@ export const useAIAgent = (): UseAIAgentReturn => {
   );
 
   /**
-   * Toggle auto-purchase for an agent
-   * Instruction: toggle_auto_purchase
-   * NOTE: IDL version has no arguments - it toggles between true/false
-   * To set specific value, use update_ai_agent (when implemented)
+   * Update agent configuration
    */
-  const toggleAutoPurchase = useCallback(
-    async (agentPDA: PublicKey): Promise<string> => {
+  const updateAgentConfig = useCallback(
+    async (
+      agentPDA: PublicKey,
+      _agentId: string,
+      maxBudgetPerTicket?: number,
+      autoPurchaseThreshold?: number
+    ): Promise<string> => {
       if (!program || !publicKey) {
         throw new Error('Wallet not connected');
       }
@@ -220,9 +439,11 @@ export const useAIAgent = (): UseAIAgentReturn => {
       setError(null);
 
       try {
-        // IDL version has no args - just toggles
+        const maxBudgetBN = maxBudgetPerTicket !== undefined ? new BN(maxBudgetPerTicket) : null;
+        const thresholdBN = autoPurchaseThreshold !== undefined ? autoPurchaseThreshold : null;
+
         const tx = await program.methods
-          .toggleAutoPurchase()
+          .updateAgentConfig(maxBudgetBN, thresholdBN)
           .accounts({
             agent: agentPDA,
             owner: publicKey,
@@ -278,17 +499,47 @@ export const useAIAgent = (): UseAIAgentReturn => {
     [connection]
   );
 
+  /**
+   * Fetch escrow by PDA
+   */
+  const getEscrow = useCallback(
+    async (escrowPDA: PublicKey): Promise<AgentEscrow | null> => {
+      if (!connection) {
+        return null;
+      }
+
+      try {
+        return await fetchEscrow(connection, escrowPDA);
+      } catch (err) {
+        const error = err as Error;
+        setError(error);
+        return null;
+      }
+    },
+    [connection]
+  );
+
   return {
     // Operations
     createAgent,
+    createEscrow,
+    depositToEscrow,
+    withdrawFromEscrow,
+
+    // Agent control
     activateAgent,
     deactivateAgent,
-    addBudget,
     toggleAutoPurchase,
+    addAgentBudget,
+    updateAgentConfig,
+
+    // Core function
+    buyTicketWithEscrow,
 
     // Queries
     getUserAgents,
     getAgent,
+    getEscrow,
 
     // State
     loading,

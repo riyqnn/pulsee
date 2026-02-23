@@ -4,20 +4,11 @@
 resolution = true
 skip-lint = false
 
-[programs.devnet]
-pulse = "DUJBE41hSUh178BujH79WtirW8p9A3aA3WNCdk6ibyPp"
-
-[programs.localnet]
-pulse = "HkUzsGxmAhjh6UpdBc6ECsN8pj6D8poX7H7yLvuMRLtS"
-
 [registry]
 url = "https://api.apr.dev"
 
 [provider]
 cluster = "devnet"
 wallet = "~/.config/solana/id.json"
-
-[scripts]
-test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
 
 [hooks]

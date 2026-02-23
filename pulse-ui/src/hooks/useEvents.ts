@@ -1,16 +1,9 @@
-// Event Operations Hook
+// Event Operations Hook - Simplified MVP
 // Handles event and ticket tier operations
-//
-// NOTE: The following operations exist in lib.rs but are NOT in the deployed contract:
-// - update_event: Update event details (not deployed)
-// - cancel_event: Cancel an event (not deployed)
-// - update_ticket_tier: Update tier details (not deployed)
-// - disable_tier: Disable a ticket tier (not deployed)
-//
-// Only create_event and create_ticket_tier are available in the deployed contract.
 
 import { useMemo, useState, useCallback } from 'react';
 import { PublicKey, SystemProgram } from '@solana/web3.js';
+import { BN } from '@coral-xyz/anchor';
 import { useProgram } from './useProgram';
 import { useWallet } from '@solana/wallet-adapter-react';
 import {
@@ -20,7 +13,6 @@ import {
   fetchEvent,
   fetchTicketTiers,
   fetchTier,
-  isSaleActive,
 } from '../utils/accounts';
 import type {
   CreateEventInput,
@@ -44,9 +36,6 @@ interface UseEventsReturn {
   getTier: (tierPDA: PublicKey) => Promise<TicketTier | null>;
   getEventWithTiers: (eventPDA: PublicKey) => Promise<EventWithTiers | null>;
 
-  // Helpers
-  isEventOnSale: (event: Event) => boolean;
-
   // State
   loading: boolean;
   error: Error | null;
@@ -64,8 +53,8 @@ export const useEvents = (): UseEventsReturn => {
   }, [program, publicKey, wallet]);
 
   /**
-   * Create a new event
-   * Instruction: create_event
+   * Create a new event - Simplified version
+   * Only takes: eventId, organizerFeeBps
    */
   const createEvent = useCallback(
     async (config: CreateEventInput): Promise<string> => {
@@ -82,16 +71,7 @@ export const useEvents = (): UseEventsReturn => {
         const tx = await program.methods
           .createEvent(
             config.eventId,
-            config.name,
-            config.description,
-            config.imageUrl,
-            config.venue,
-            config.eventStartTime,
-            config.eventEndTime,
-            config.saleStartTime,
-            config.saleEndTime,
-            config.maxTicketsPerUser,
-            config.royaltyBps
+            config.organizerFeeBps
           )
           .accounts({
             event: eventPDA,
@@ -113,8 +93,8 @@ export const useEvents = (): UseEventsReturn => {
   );
 
   /**
-   * Create a ticket tier for an event
-   * Instruction: create_ticket_tier
+   * Create a ticket tier for an event - Simplified version
+   * Only takes: tierId, price, maxSupply
    */
   const createTicketTier = useCallback(
     async (eventPDA: PublicKey, config: CreateTicketTierInput): Promise<string> => {
@@ -128,13 +108,18 @@ export const useEvents = (): UseEventsReturn => {
       try {
         const [tierPDA] = await getTierPDA(eventPDA, config.tierId, PROGRAM_ID);
 
+        const priceBN = typeof config.price === 'bigint'
+          ? new BN(config.price.toString())
+          : new BN(config.price);
+        const maxSupplyBN = typeof config.maxSupply === 'bigint'
+          ? new BN(config.maxSupply.toString())
+          : new BN(config.maxSupply);
+
         const tx = await program.methods
           .createTicketTier(
             config.tierId,
-            config.name,
-            config.description,
-            config.price,
-            config.maxSupply
+            priceBN,
+            maxSupplyBN
           )
           .accounts({
             event: eventPDA,
@@ -257,7 +242,8 @@ export const useEvents = (): UseEventsReturn => {
         const tiers = await fetchTicketTiers(connection, eventPDA, PROGRAM_ID, program);
 
         return {
-          ...event,
+          publicKey: eventPDA,
+          account: event,
           tiers: tiers.map((t) => t.account),
         };
       } catch (err) {
@@ -266,21 +252,7 @@ export const useEvents = (): UseEventsReturn => {
         return null;
       }
     },
-    [connection]
-  );
-
-  /**
-   * Check if an event is currently on sale
-   */
-  const isEventOnSale = useCallback(
-    (event: Event): boolean => {
-      return (
-        event.isActive &&
-        !event.isCancelled &&
-        isSaleActive(event.saleStartTime, event.saleEndTime)
-      );
-    },
-    []
+    [connection, program]
   );
 
   return {
@@ -294,9 +266,6 @@ export const useEvents = (): UseEventsReturn => {
     getEventTiers,
     getTier,
     getEventWithTiers,
-
-    // Helpers
-    isEventOnSale,
 
     // State
     loading,

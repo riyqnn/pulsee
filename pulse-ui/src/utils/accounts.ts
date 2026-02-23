@@ -11,12 +11,16 @@ import type {
   Event,
   TicketTier,
   AIAgent,
-  User,
-  Ticket,
-  MarketListing,
-  GlobalConfig,
+  AgentEscrow,
   ProgramAccount,
 } from '../types/pulse';
+
+// Removed types (no longer in simplified MVP):
+// User, Ticket, MarketListing, GlobalConfig - use Supabase for offchain data
+
+// ============== Program Constants ==============
+
+export const PROGRAM_ID = new PublicKey('DUJBE41hSUh178BujH79WtirW8p9A3aA3WNCdk6ibyPp');
 
 // ============== Request Throttling ==============
 
@@ -182,6 +186,20 @@ export function getTicketPDA(
   );
 }
 
+/**
+ * Derive an escrow PDA
+ */
+export function getEscrowPDA(
+  agentPDA: PublicKey,
+  owner: PublicKey,
+  programId: PublicKey
+): [PublicKey, number] {
+  return PublicKey.findProgramAddressSync(
+    [Buffer.from(PDA_SEEDS.ESCROW), agentPDA.toBuffer(), owner.toBuffer()],
+    programId
+  );
+}
+
 // ============== Discriminators ==============
 // Converted to base58 strings for memcmp filters
 
@@ -219,6 +237,11 @@ export const GlobalConfigDiscriminator = Buffer.from([
   149, 8, 156, 202, 160, 252, 176, 217,
 ]);
 export const GlobalConfigDiscriminatorB58 = bs58.encode(GlobalConfigDiscriminator);
+
+export const AgentEscrowDiscriminator = Buffer.from([
+  26, 63, 32, 229, 41, 3, 31, 173, // account:AgentEscrow
+]);
+export const AgentEscrowDiscriminatorB58 = bs58.encode(AgentEscrowDiscriminator);
 
 // ============== Account Decoding Helper ==============
 /**
@@ -283,7 +306,7 @@ export async function fetchEvent(
 }
 
 /**
- * Parse event account data manually
+ * Parse event account data manually (Simplified MVP version)
  */
 function parseEventAccount(data: Buffer): Event {
   let offset = 0;
@@ -298,60 +321,8 @@ function parseEventAccount(data: Buffer): Event {
   const eventId = data.subarray(offset, offset + eventIdLen).toString('utf8');
   offset += eventIdLen;
 
-  // name: String
-  const nameLen = data.readUInt32LE(offset);
-  offset += 4;
-  const name = data.subarray(offset, offset + nameLen).toString('utf8');
-  offset += nameLen;
-
-  // description: String
-  const descLen = data.readUInt32LE(offset);
-  offset += 4;
-  const description = data.subarray(offset, offset + descLen).toString('utf8');
-  offset += descLen;
-
-  // image_url: String
-  const imageUrlLen = data.readUInt32LE(offset);
-  offset += 4;
-  const imageUrl = data.subarray(offset, offset + imageUrlLen).toString('utf8');
-  offset += imageUrlLen;
-
-  // venue: String
-  const venueLen = data.readUInt32LE(offset);
-  offset += 4;
-  const venue = data.subarray(offset, offset + venueLen).toString('utf8');
-  offset += venueLen;
-
-  // event_start_time: i64 (8 bytes)
-  const eventStartTime = BigInt(data.readBigInt64LE(offset));
-  offset += 8;
-
-  // event_end_time: i64
-  const eventEndTime = BigInt(data.readBigInt64LE(offset));
-  offset += 8;
-
-  // sale_start_time: i64
-  const saleStartTime = BigInt(data.readBigInt64LE(offset));
-  offset += 8;
-
-  // sale_end_time: i64
-  const saleEndTime = BigInt(data.readBigInt64LE(offset));
-  offset += 8;
-
-  // is_active: bool (1 byte)
-  const isActive = data.readUInt8(offset) !== 0;
-  offset += 1;
-
-  // is_cancelled: bool
-  const isCancelled = data.readUInt8(offset) !== 0;
-  offset += 1;
-
-  // max_tickets_per_user: u32 (4 bytes)
-  const maxTicketsPerUser = data.readUInt32LE(offset);
-  offset += 4;
-
-  // royalty_bps: u16 (2 bytes)
-  const royaltyBps = data.readUInt16LE(offset);
+  // organizer_fee_bps: u16 (2 bytes)
+  const organizerFeeBps = data.readUInt16LE(offset);
   offset += 2;
 
   // total_tickets_sold: u64 (8 bytes)
@@ -362,26 +333,25 @@ function parseEventAccount(data: Buffer): Event {
   const totalRevenue = BigInt(data.readBigUInt64LE(offset));
   offset += 8;
 
+  // is_active: bool (1 byte)
+  const isActive = data.readUInt8(offset) !== 0;
+  offset += 1;
+
+  // created_at: i64 (8 bytes)
+  const createdAt = BigInt(data.readBigUInt64LE(offset));
+  offset += 8;
+
   // bump: u8
   const bump = data.readUInt8(offset);
 
   return {
     organizer,
     eventId,
-    name,
-    description,
-    imageUrl,
-    venue,
-    eventStartTime: Number(eventStartTime),
-    eventEndTime: Number(eventEndTime),
-    saleStartTime: Number(saleStartTime),
-    saleEndTime: Number(saleEndTime),
-    isActive,
-    isCancelled,
-    maxTicketsPerUser,
-    royaltyBps,
+    organizerFeeBps,
     totalTicketsSold,
     totalRevenue,
+    isActive,
+    createdAt,
     bump,
   } as any as Event;
 }
@@ -479,7 +449,7 @@ export async function fetchUserAgents(
 
 
 /**
- * Parse agent account data manually
+ * Parse agent account data manually (Simplified MVP version)
  */
 function parseAgentAccount(data: Buffer): AIAgent {
   let offset = 0;
@@ -494,17 +464,19 @@ function parseAgentAccount(data: Buffer): AIAgent {
   const agentId = data.subarray(offset, offset + agentIdLen).toString('utf8');
   offset += agentIdLen;
 
-  // name: String
-  const nameLen = data.readUInt32LE(offset);
-  offset += 4;
-  const name = data.subarray(offset, offset + nameLen).toString('utf8');
-  offset += nameLen;
-
-  // is_active: bool (1 byte) - NO ALIGNMENT NEEDED AFTER THIS
+  // is_active: bool (1 byte)
   const isActive = data.readUInt8(offset) !== 0;
   offset += 1;
 
-  // max_budget_per_ticket: u64 (8 bytes) - READ IMMEDIATELY, NO ALIGNMENT
+  // auto_purchase_enabled: bool (1 byte)
+  const autoPurchaseEnabled = data.readUInt8(offset) !== 0;
+  offset += 1;
+
+  // auto_purchase_threshold: u16 (2 bytes)
+  const autoPurchaseThreshold = data.readUInt16LE(offset);
+  offset += 2;
+
+  // max_budget_per_ticket: u64 (8 bytes)
   const maxBudgetPerTicket = BigInt(data.readBigUInt64LE(offset));
   offset += 8;
 
@@ -516,107 +488,12 @@ function parseAgentAccount(data: Buffer): AIAgent {
   const spentBudget = BigInt(data.readBigUInt64LE(offset));
   offset += 8;
 
-  // preference_flags: u64
-  const preferenceFlags = BigInt(data.readBigUInt64LE(offset));
-  offset += 8;
-
-  // preferred_genres: [u8; 10]
-  const preferredGenres = Array.from(data.subarray(offset, offset + 10));
-  offset += 10;
-
-  // preferred_venues: [Pubkey; 5] (5 * 32 = 160 bytes)
-  const preferredVenues: PublicKey[] = [];
-  for (let i = 0; i < 5; i++) {
-    preferredVenues.push(new PublicKey(data.subarray(offset, offset + 32)));
-    offset += 32;
-  }
-
-  // min_event_duration: u32 (4 bytes)
-  const minEventDuration = data.readUInt32LE(offset);
-  offset += 4;
-
-  // max_event_duration: u32
-  const maxEventDuration = data.readUInt32LE(offset);
-  offset += 4;
-
-  // allowed_locations: [Pubkey; 5]
-  const allowedLocations: PublicKey[] = [];
-  for (let i = 0; i < 5; i++) {
-    allowedLocations.push(new PublicKey(data.subarray(offset, offset + 32)));
-    offset += 32;
-  }
-
-  // max_distance: u32
-  const maxDistance = data.readUInt32LE(offset);
-  offset += 4;
-
-  // preferred_days: u8
-  const preferredDays = data.readUInt8(offset);
-  offset += 1;
-
-  // Align to 4-byte boundary before u32 fields (Rust struct alignment)
-  while (offset % 4 !== 0) {
-    offset += 1;
-  }
-
-  // preferred_time_start: u32
-  const preferredTimeStart = data.readUInt32LE(offset);
-  offset += 4;
-
-  // preferred_time_end: u32
-  const preferredTimeEnd = data.readUInt32LE(offset);
-  offset += 4;
-
-  // auto_purchase_enabled: bool
-  const autoPurchaseEnabled = data.readUInt8(offset) !== 0;
-  offset += 1;
-
-  // auto_purchase_threshold: u16
-  const autoPurchaseThreshold = data.readUInt16LE(offset);
-  offset += 2;
-
-  // max_tickets_per_event: u8
-  const maxTicketsPerEvent = data.readUInt8(offset);
-  offset += 1;
-
-  // require_verification: bool
-  const requireVerification = data.readUInt8(offset) !== 0;
-  offset += 1;
-
-  // allow_agent_coordination: bool
-  const allowAgentCoordination = data.readUInt8(offset) !== 0;
-  offset += 1;
-
-  // coordination_group_id: Option<String> (1 byte flag + length + string)
-  const hasGroupId = data.readUInt8(offset) !== 0;
-  offset += 1;
-  let coordinationGroupId: string | null = null;
-  if (hasGroupId) {
-    const groupIdLen = data.readUInt32LE(offset);
-    offset += 4;
-    coordinationGroupId = data.subarray(offset, offset + groupIdLen).toString('utf8');
-    offset += groupIdLen;
-  }
-
-  // Align to 8-byte boundary before u64 (tickets_purchased)
-  while (offset % 8 !== 0) {
-    offset += 1;
-  }
-
   // tickets_purchased: u64
   const ticketsPurchased = BigInt(data.readBigUInt64LE(offset));
   offset += 8;
 
-  // money_saved: u64
-  const moneySaved = BigInt(data.readBigUInt64LE(offset));
-  offset += 8;
-
   // created_at: i64
   const createdAt = BigInt(data.readBigUInt64LE(offset));
-  offset += 8;
-
-  // last_active: i64
-  const lastActive = BigInt(data.readBigUInt64LE(offset));
   offset += 8;
 
   // bump: u8
@@ -625,33 +502,16 @@ function parseAgentAccount(data: Buffer): AIAgent {
   return {
     owner,
     agentId,
-    name,
     isActive,
+    autoPurchaseEnabled,
+    autoPurchaseThreshold,
     maxBudgetPerTicket,
     totalBudget,
     spentBudget,
-    preferenceFlags,
-    preferredGenres,
-    preferredVenues,
-    minEventDuration,
-    maxEventDuration,
-    allowedLocations,
-    maxDistance,
-    preferredDays,
-    preferredTimeStart,
-    preferredTimeEnd,
-    autoPurchaseEnabled,
-    autoPurchaseThreshold,
-    maxTicketsPerEvent,
-    requireVerification,
-    allowAgentCoordination,
-    coordinationGroupId,
     ticketsPurchased,
-    moneySaved,
     createdAt,
-    lastActive,
     bump,
-  };
+  } as any as AIAgent;
 }
 
 /**
@@ -669,113 +529,131 @@ export async function fetchAgent(
 }
 
 /**
- * Fetch a user account
+ * Fetch an escrow account
+ */
+export async function fetchEscrow(
+  connection: Connection,
+  escrowPDA: PublicKey
+): Promise<AgentEscrow | null> {
+  const account = await connection.getAccountInfo(escrowPDA);
+  if (!account) return null;
+  // Skip 8-byte discriminator
+  const data = account.data.subarray(8);
+  return parseEscrowAccount(data);
+}
+
+/**
+ * Parse escrow account data manually
+ */
+function parseEscrowAccount(data: Buffer): AgentEscrow {
+  let offset = 0;
+
+  // agent: Pubkey (32 bytes)
+  const agent = new PublicKey(data.subarray(offset, offset + 32));
+  offset += 32;
+
+  // owner: Pubkey (32 bytes)
+  const owner = new PublicKey(data.subarray(offset, offset + 32));
+  offset += 32;
+
+  // balance: u64 (8 bytes)
+  const balance = BigInt(data.readBigUInt64LE(offset));
+  offset += 8;
+
+  // total_deposited: u64
+  const totalDeposited = BigInt(data.readBigUInt64LE(offset));
+  offset += 8;
+
+  // total_withdrawn: u64
+  const totalWithdrawn = BigInt(data.readBigUInt64LE(offset));
+  offset += 8;
+
+  // total_spent: u64
+  const totalSpent = BigInt(data.readBigUInt64LE(offset));
+  offset += 8;
+
+  // created_at: i64
+  const createdAt = BigInt(data.readBigUInt64LE(offset));
+  offset += 8;
+
+  // last_activity: i64
+  const lastActivity = BigInt(data.readBigUInt64LE(offset));
+  offset += 8;
+
+  // bump: u8
+  const bump = data.readUInt8(offset);
+
+  return {
+    agent,
+    owner,
+    balance,
+    totalDeposited,
+    totalWithdrawn,
+    totalSpent,
+    createdAt,
+    lastActivity,
+    bump,
+  };
+}
+
+// ============== REMOVED IN MVP ==============
+// The following types are removed in simplified MVP - use Supabase for offchain data:
+// User, Ticket, MarketListing, GlobalConfig
+
+/**
+ * Fetch a user account - REMOVED in MVP, use wallet address directly
  */
 export async function fetchUser(
-  connection: Connection,
-  userPDA: PublicKey
-): Promise<User | null> {
-  const account = await connection.getAccountInfo(userPDA);
-  if (!account) return null;
-  // Skip 8-byte discriminator
-  const data = account.data.subarray(8);
-  return data as unknown as User;
+  _connection: Connection,
+  _userPDA: PublicKey
+): Promise<null> {
+  // Not implemented in simplified MVP
+  return null;
 }
 
 /**
- * Fetch all active market listings
+ * Fetch all active market listings - REMOVED in MVP
  */
 export async function fetchAllListings(
-  connection: Connection,
-  programId: PublicKey
-): Promise<ProgramAccount<MarketListing>[]> {
-  const accounts = await requestQueue.add(() =>
-    connection.getProgramAccounts(programId, {
-      filters: [
-        {
-          memcmp: {
-            offset: 0,
-            bytes: MarketListingDiscriminatorB58,
-          },
-        },
-      ],
-    })
-  );
-
-  return accounts.map((account) => {
-    // Skip 8-byte discriminator
-    const data = account.account.data.subarray(8);
-    return {
-      publicKey: account.pubkey,
-      account: data as unknown as MarketListing,
-    };
-  });
+  _connection: Connection,
+  _programId: PublicKey
+): Promise<never[]> {
+  // Not implemented in simplified MVP - secondary market removed
+  return [];
 }
 
 /**
- * Fetch a single market listing
+ * Fetch a single market listing - REMOVED in MVP
  */
 export async function fetchListing(
-  connection: Connection,
-  listingPDA: PublicKey
-): Promise<MarketListing | null> {
-  const account = await connection.getAccountInfo(listingPDA);
-  if (!account) return null;
-  // Skip 8-byte discriminator
-  const data = account.data.subarray(8);
-  return data as unknown as MarketListing;
+  _connection: Connection,
+  _listingPDA: PublicKey
+): Promise<null> {
+  // Not implemented in simplified MVP
+  return null;
 }
 
 /**
- * Fetch global config
+ * Fetch global config - REMOVED in MVP
  */
 export async function fetchConfig(
-  connection: Connection,
-  programId: PublicKey
-): Promise<GlobalConfig | null> {
-  const [configPDA] = getConfigPDA(programId);
-  const account = await connection.getAccountInfo(configPDA);
-  if (!account) return null;
-  // Skip 8-byte discriminator
-  const data = account.data.subarray(8);
-  return data as unknown as GlobalConfig;
+  _connection: Connection,
+  _programId: PublicKey
+): Promise<null> {
+  // Not implemented in simplified MVP
+  return null;
 }
 
 /**
- * Fetch all tickets owned by a user
+ * Fetch all tickets owned by a user - REMOVED in MVP
  */
 export async function fetchUserTickets(
-  connection: Connection,
-  owner: PublicKey,
-  programId: PublicKey
-): Promise<ProgramAccount<Ticket>[]> {
-  const accounts = await requestQueue.add(() =>
-    connection.getProgramAccounts(programId, {
-      filters: [
-        {
-          memcmp: {
-            offset: 0,
-            bytes: TicketDiscriminatorB58,
-          },
-        },
-        {
-          memcmp: {
-            offset: 8 + 32 + 32 + 32,
-            bytes: owner.toBase58(),
-          },
-        },
-      ],
-    })
-  );
-
-  return accounts.map((account) => {
-    // Skip 8-byte discriminator
-    const data = account.account.data.subarray(8);
-    return {
-      publicKey: account.pubkey,
-      account: data as unknown as Ticket,
-    };
-  });
+  _connection: Connection,
+  _owner: PublicKey,
+  _programId: PublicKey
+): Promise<never[]> {
+  // Not implemented in simplified MVP - tickets managed offchain
+  return [];
 }
 
 // ============== Utility Functions ==============
