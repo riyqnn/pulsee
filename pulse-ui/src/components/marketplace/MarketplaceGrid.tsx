@@ -1,13 +1,17 @@
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { EventCard } from './EventCard';
 import { useEventsContext } from '../../contexts/EventsContext';
 import { useEvents } from '../../hooks/useEvents';
 import { useEffect, useState, useCallback } from 'react';
+import { NeoButton, NeoCard } from '../neo'; 
+// import { CreateEventForm } from '../CreateEventForm'; 
 
 export const MarketplaceGrid = () => {
-  const { events, loading, getActiveEvents } = useEventsContext();
+  const { events, loading, getActiveEvents, refresh } = useEventsContext();
   const { getEventTiers } = useEvents();
   const [eventsWithTiers, setEventsWithTiers] = useState<any[]>([]);
+  
+  // const [showCreateModal, setShowCreateModal] = useState(false);
 
   const loadEventsWithTiers = useCallback(async () => {
     const activeEvents = getActiveEvents();
@@ -17,15 +21,14 @@ export const MarketplaceGrid = () => {
         const tiers = await getEventTiers(event.publicKey);
         return {
           id: event.account.eventId,
-          // Event metadata now comes from Supabase (offchain)
-          name: 'Event ' + event.account.eventId,  // Placeholder - get from Supabase
-          venue: 'TBD',  // Placeholder - get from Supabase
-          date: new Date().toLocaleDateString(),  // Placeholder - get from Supabase
-          image: undefined,  // Placeholder - get from Supabase
-          soldOut: tiers.every((t) => Number(t.account.currentSupply) >= Number(t.account.maxSupply)),
+          name: 'Event ' + event.account.eventId,
+          venue: 'TBD',
+          date: new Date().toLocaleDateString(),
+          image: undefined,
+          soldOut: tiers.length > 0 && tiers.every((t) => Number(t.account.currentSupply) >= Number(t.account.maxSupply)),
           ticketTiers: tiers.map((t) => ({
             tierId: t.account.tierId,
-            name: t.account.tierId,  // Using tierId as name since 'name' field removed
+            name: t.account.tierId,
             price: Number(t.account.price) / 1e9,
             available: Number(t.account.maxSupply) - Number(t.account.currentSupply),
             maxSupply: Number(t.account.maxSupply),
@@ -60,12 +63,21 @@ export const MarketplaceGrid = () => {
               ON-CHAIN<br />MARKETPLACE
             </h2>
           </div>
-          <div className="hidden md:block text-right">
-            <div className="font-mono text-sm text-neutral-500 mb-1">LIVE EVENTS</div>
-            <div className="font-black text-5xl text-[#FF00F5]">{eventsWithTiers.length}</div>
-          </div>
+          
+          {/* <div className="flex flex-col items-end gap-4">
+            <NeoButton 
+              variant="primary" 
+              onClick={() => setShowCreateModal(true)}
+              className="px-8 py-4 text-xl shadow-[8px_8px_0_0_#000000]"
+            >
+              + CREATE EVENT
+            </NeoButton>
+            <div className="hidden md:block text-right">
+              <div className="font-mono text-sm text-neutral-500 mb-1">LIVE EVENTS</div>
+              <div className="font-black text-5xl text-[#FF00F5]">{eventsWithTiers.length}</div>
+            </div>
+          </div> */}
         </div>
-        {/* Decorative element */}
         <div className="absolute -bottom-1 right-0 w-32 h-1 bg-[#FF00F5]" />
       </div>
 
@@ -84,6 +96,12 @@ export const MarketplaceGrid = () => {
         <div className="text-center py-20 border-4 border-black bg-neutral-100">
           <div className="font-mono text-xl font-bold text-neutral-600">NO EVENTS CURRENTLY ACTIVE</div>
           <div className="font-mono text-sm text-neutral-500 mt-2">CHECK BACK SOON</div>
+          
+          <div className="mt-6">
+            <NeoButton variant="secondary" onClick={() => setShowCreateModal(true)}>
+              BE THE FIRST TO HOST
+            </NeoButton>
+          </div>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -99,6 +117,40 @@ export const MarketplaceGrid = () => {
           ))}
         </div>
       )}
+
+      {/* <AnimatePresence>
+        {showCreateModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-50 p-4"
+            onClick={() => setShowCreateModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              className="w-full max-w-2xl relative"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button 
+                onClick={() => setShowCreateModal(false)}
+                className="absolute -top-12 right-0 text-white font-mono hover:text-[#FF00F5] transition-colors"
+              >
+                [ CLOSE ESC ]
+              </button>
+
+              <CreateEventForm 
+                onSuccess={() => {
+                   setShowCreateModal(false);
+                   refresh?.(); // Refresh context agar list terupdate otomatis
+                }} 
+              />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence> */}
 
       {/* Mobile stats */}
       {eventsWithTiers.length > 0 && (

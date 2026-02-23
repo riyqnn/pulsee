@@ -30,51 +30,47 @@ pub fn create_escrow(ctx: Context<CreateEscrow>) -> Result<()> {
 /// Deposit SOL into agent's escrow account
 pub fn deposit_to_escrow(ctx: Context<DepositToEscrow>, amount: u64) -> Result<()> {
     let escrow = &mut ctx.accounts.escrow;
-    let agent = &ctx.accounts.agent;
     let clock = Clock::get()?;
 
     require!(amount > 0, TixError::InvalidBudget);
 
-    // Transfer SOL from owner to escrow
-    **ctx.accounts.owner.to_account_info().try_borrow_mut_lamports()? -= amount;
-    **escrow.to_account_info().try_borrow_mut_lamports()? += amount;
+    let cpi_context = CpiContext::new(
+        ctx.accounts.system_program.to_account_info(),
+        anchor_lang::system_program::Transfer {
+            from: ctx.accounts.owner.to_account_info(),
+            to: escrow.to_account_info(),
+        },
+    );
+    anchor_lang::system_program::transfer(cpi_context, amount)?;
 
-    // Update escrow state
+    // Atomic state update
     escrow.balance = escrow.balance.checked_add(amount).ok_or(TixError::MathOverflow)?;
     escrow.total_deposited = escrow.total_deposited.checked_add(amount).ok_or(TixError::MathOverflow)?;
     escrow.last_activity = clock.unix_timestamp;
 
-    msg!(
-        "Deposited {} lamports to escrow for agent {}",
-        amount,
-        agent.agent_id
-    );
+    msg!("Deposited {} lamports to escrow", amount);
     Ok(())
 }
 
 /// Withdraw unused SOL from agent's escrow account
 pub fn withdraw_from_escrow(ctx: Context<WithdrawFromEscrow>, amount: u64) -> Result<()> {
+    let escrow_info = ctx.accounts.escrow.to_account_info();
+    let owner_info = ctx.accounts.owner.to_account_info();
+    
     let escrow = &mut ctx.accounts.escrow;
-    let agent = &ctx.accounts.agent;
     let clock = Clock::get()?;
 
     require!(amount > 0, TixError::InvalidBudget);
     require!(escrow.balance >= amount, TixError::InsufficientEscrowBalance);
 
-    // Transfer SOL from escrow to owner
-    **escrow.to_account_info().try_borrow_mut_lamports()? -= amount;
-    **ctx.accounts.owner.to_account_info().try_borrow_mut_lamports()? += amount;
+    **escrow_info.try_borrow_mut_lamports()? -= amount;
+    **owner_info.try_borrow_mut_lamports()? += amount;
 
-    // Update escrow state
     escrow.balance = escrow.balance.checked_sub(amount).ok_or(TixError::MathUnderflow)?;
     escrow.total_withdrawn = escrow.total_withdrawn.checked_add(amount).ok_or(TixError::MathOverflow)?;
     escrow.last_activity = clock.unix_timestamp;
 
-    msg!(
-        "Withdrew {} lamports from escrow for agent {}",
-        amount,
-        agent.agent_id
-    );
+    msg!("Withdrew {} lamports from escrow", amount);
     Ok(())
 }
 
@@ -89,60 +85,45 @@ pub fn buy_ticket_with_escrow(
     ctx: Context<BuyTicketWithEscrow>,
     _tier_id: String,
 ) -> Result<()> {
+   let escrow_info = ctx.accounts.escrow.to_account_info();
+    let organizer_info = ctx.accounts.organizer.to_account_info();
+
     let event = &mut ctx.accounts.event;
     let tier = &mut ctx.accounts.tier;
     let agent = &mut ctx.accounts.agent;
     let escrow = &mut ctx.accounts.escrow;
+    let clock = Clock::get()?;
 
-    // Validate event and tier
     require!(event.is_active, TixError::EventNotActive);
     require!(tier.is_active, TixError::TierNotActive);
     require!(tier.current_supply < tier.max_supply, TixError::TierSoldOut);
-
-    // Validate agent
     require!(agent.is_active, TixError::AgentInactive);
     require!(agent.auto_purchase_enabled, TixError::AutoPurchaseDisabled);
 
-    let price = tier.price;
-
-    // Check escrow balance
+   let price = tier.price;
     require!(escrow.balance >= price, TixError::InsufficientEscrowBalance);
 
-    // Check agent budget constraints
-    let remaining_budget = agent
-        .total_budget
-        .checked_sub(agent.spent_budget)
+    let remaining_budget = agent.total_budget.checked_sub(agent.spent_budget)
         .ok_or(TixError::InsufficientAgentBudget)?;
+    
     require!(price <= remaining_budget, TixError::InsufficientAgentBudget);
     require!(price <= agent.max_budget_per_ticket, TixError::InsufficientAgentBudget);
 
-    // Transfer payment from escrow to organizer
-    **escrow.to_account_info().try_borrow_mut_lamports()? -= price;
-    **ctx.accounts.organizer.to_account_info().try_borrow_mut_lamports()? += price;
+    **escrow_info.try_borrow_mut_lamports()? -= price;
+    **organizer_info.try_borrow_mut_lamports()? += price;
 
-    // Update escrow
     escrow.balance = escrow.balance.checked_sub(price).ok_or(TixError::MathUnderflow)?;
     escrow.total_spent = escrow.total_spent.checked_add(price).ok_or(TixError::MathOverflow)?;
-    escrow.last_activity = Clock::get()?.unix_timestamp;
+    escrow.last_activity = clock.unix_timestamp;
 
-    // Update agent budget tracking
     agent.spent_budget = agent.spent_budget.checked_add(price).ok_or(TixError::MathOverflow)?;
     agent.tickets_purchased += 1;
 
-    // Update tier supply
     tier.current_supply += 1;
-
-    // Update event stats
     event.total_tickets_sold += 1;
     event.total_revenue = event.total_revenue.checked_add(price).ok_or(TixError::MathOverflow)?;
 
-    msg!(
-        "Agent {} purchased ticket from escrow for event: {}, tier: {}, price: {}",
-        agent.agent_id,
-        event.event_id,
-        _tier_id,
-        price
-    );
+    msg!("Autonomous purchase successful for agent: {}", agent.agent_id);
     Ok(())
 }
 

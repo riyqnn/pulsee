@@ -76,27 +76,18 @@ export const useAIAgent = (): UseAIAgentReturn => {
    * Create a new AI agent
    * Simplified version: agent_id, max_budget_per_ticket, total_budget
    */
+  // Cari function createAgent di useAIAgent.ts dan ganti logic pemanggilannya:
   const createAgent = useCallback(
     async (config: CreateAgentInput): Promise<string> => {
-      if (!program || !publicKey) {
-        throw new Error('Wallet not connected');
-      }
-
+      if (!program || !publicKey) throw new Error('Wallet not connected');
       setLoading(true);
-      setError(null);
-
       try {
-        const [agentPDA] = await getAgentPDA(publicKey, config.agentId, PROGRAM_ID);
+        const [agentPDA] = getAgentPDA(publicKey, config.agentId, PROGRAM_ID);
 
-        // Convert budget values to BN for u64 types
-        const maxBudgetBN = typeof config.maxBudgetPerTicket === 'bigint'
-          ? new BN(config.maxBudgetPerTicket.toString())
-          : new BN(config.maxBudgetPerTicket);
-        const totalBudgetBN = typeof config.totalBudget === 'bigint'
-          ? new BN(config.totalBudget.toString())
-          : new BN(config.totalBudget);
+        const maxBudgetBN = new BN(config.maxBudgetPerTicket.toString());
+        const totalBudgetBN = new BN(config.totalBudget.toString());
 
-        // Simplified create_ai_agent: agent_id, max_budget_per_ticket, total_budget
+        // Pastikan nama method sesuai dengan IDL (biasanya camelCase)
         const tx = await program.methods
           .createAiAgent(
             config.agentId,
@@ -112,16 +103,14 @@ export const useAIAgent = (): UseAIAgentReturn => {
 
         return tx;
       } catch (err) {
-        const error = err as Error;
-        setError(error);
-        throw error;
+        console.error("Create Agent Error:", err);
+        throw err;
       } finally {
         setLoading(false);
       }
     },
     [program, publicKey]
   );
-
   /**
    * Create escrow for an agent
    */
@@ -163,56 +152,40 @@ export const useAIAgent = (): UseAIAgentReturn => {
    * Deposit to escrow
    */
   const depositToEscrow = useCallback(
-    async (escrowPDA: PublicKey, agentPDA: PublicKey, amountLamports: number): Promise<string> => {
-      if (!program || !publicKey) {
-        throw new Error('Wallet not connected');
-      }
+  async (escrowPDA: PublicKey, agentPDA: PublicKey, amountLamports: number): Promise<string> => {
+    if (!program || !publicKey) throw new Error('Wallet not connected');
 
-      setLoading(true);
-      setError(null);
+    setLoading(true);
+    try {
+      const tx = await program.methods
+        .depositToEscrow(new BN(amountLamports))
+        .accounts({
+          escrow: escrowPDA,
+          agent: agentPDA,
+          owner: publicKey,
+          systemProgram: SystemProgram.programId,
+        })
+        .rpc();
+      return tx;
+    } finally {
+      setLoading(false);
+    }
+  },
+  [program, publicKey]
+);
 
-      try {
-        const amountBN = new BN(amountLamports);
 
-        const tx = await program.methods
-          .depositToEscrow(amountBN)
-          .accounts({
-            escrow: escrowPDA,
-            agent: agentPDA,
-            owner: publicKey,
-            systemProgram: SystemProgram.programId,
-          })
-          .rpc();
-
-        return tx;
-      } catch (err) {
-        const error = err as Error;
-        setError(error);
-        throw error;
-      } finally {
-        setLoading(false);
-      }
-    },
-    [program, publicKey]
-  );
-
-  /**
-   * Withdraw from escrow
-   */
+/**
+ * Withdraw from escrow
+*/
   const withdrawFromEscrow = useCallback(
     async (escrowPDA: PublicKey, agentPDA: PublicKey, amountLamports: number): Promise<string> => {
-      if (!program || !publicKey) {
-        throw new Error('Wallet not connected');
-      }
-
+      if (!program || !publicKey) throw new Error('Wallet not connected');
+  
       setLoading(true);
-      setError(null);
-
       try {
-        const amountBN = new BN(amountLamports);
-
         const tx = await program.methods
-          .withdrawFromEscrow(amountBN)
+          .withdrawFromEscrow(new BN(amountLamports))
           .accounts({
             escrow: escrowPDA,
             agent: agentPDA,
@@ -220,18 +193,14 @@ export const useAIAgent = (): UseAIAgentReturn => {
             systemProgram: SystemProgram.programId,
           })
           .rpc();
-
         return tx;
-      } catch (err) {
-        const error = err as Error;
-        setError(error);
-        throw error;
       } finally {
         setLoading(false);
       }
     },
     [program, publicKey]
   );
+  
 
   /**
    * CORE FUNCTION: Buy ticket with escrow
@@ -390,32 +359,25 @@ export const useAIAgent = (): UseAIAgentReturn => {
    * Add budget to an agent
    */
   const addAgentBudget = useCallback(
-    async (agentPDA: PublicKey, _agentId: string, amountLamports: number): Promise<string> => {
-      if (!program || !publicKey) {
-        throw new Error('Wallet not connected');
-      }
-
-      setLoading(true);
-      setError(null);
+    async (agentPDA: PublicKey, agentId: string, amountLamports: number): Promise<string> => {
+      if (!program || !publicKey) throw new Error('Wallet not connected');
 
       try {
         const amountBN = new BN(amountLamports);
 
+        // Pastikan pemanggilan instruksi sesuai dengan IDL
         const tx = await program.methods
           .addAgentBudget(amountBN)
           .accounts({
-            agent: agentPDA,
+            agent: agentPDA, // PDA ini harus sesuai dengan seeds: ["agent", owner, agent_id]
             owner: publicKey,
           })
           .rpc();
 
         return tx;
       } catch (err) {
-        const error = err as Error;
-        setError(error);
-        throw error;
-      } finally {
-        setLoading(false);
+        console.error("Detail Error:", err);
+        throw err;
       }
     },
     [program, publicKey]

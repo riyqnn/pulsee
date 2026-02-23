@@ -5,7 +5,7 @@ import { useMemo, useState, useEffect, useCallback } from 'react';
 import pulseIDL from '../idl/pulse.json';
 
 // Export the program ID constant
-export const PROGRAM_ID = new PublicKey('DUJBE41hSUh178BujH79WtirW8p9A3aA3WNCdk6ibyPp');
+export const PROGRAM_ID = new PublicKey('5fQA4eCdUtCJPDhjGfb6nn47RhVfKJT2dW5iHuQaeH2n');
 
 interface ConnectionStatus {
   connected: boolean;

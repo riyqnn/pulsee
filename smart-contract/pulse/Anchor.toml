@@ -6,7 +6,7 @@ resolution = true
 skip-lint = false
 
 [programs.devnet]
-pulse = "DUJBE41hSUh178BujH79WtirW8p9A3aA3WNCdk6ibyPp"
+pulse = "5fQA4eCdUtCJPDhjGfb6nn47RhVfKJT2dW5iHuQaeH2n"
 
 [registry]
 url = "https://api.apr.dev"
@@ -17,5 +17,3 @@ wallet = "~/.config/solana/id.json"
 
 [scripts]
 test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 \"tests/**/*.ts\""
-
-[hooks]

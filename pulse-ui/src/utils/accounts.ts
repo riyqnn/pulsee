@@ -20,7 +20,7 @@ import type {
 
 // ============== Program Constants ==============
 
-export const PROGRAM_ID = new PublicKey('DUJBE41hSUh178BujH79WtirW8p9A3aA3WNCdk6ibyPp');
+export const PROGRAM_ID = new PublicKey('5fQA4eCdUtCJPDhjGfb6nn47RhVfKJT2dW5iHuQaeH2n');
 
 // ============== Request Throttling ==============
 
@@ -104,11 +104,17 @@ export function getEventPDA(
   eventId: string,
   programId: PublicKey
 ): [PublicKey, number] {
+  const eventIdBuffer = Buffer.from(eventId);
+  
+  if (eventIdBuffer.length > 32) {
+    throw new Error(`Event ID is too long (${eventIdBuffer.length} bytes). Max is 32 bytes.`);
+  }
+
   return PublicKey.findProgramAddressSync(
     [
-      Buffer.from(PDA_SEEDS.EVENT),
+      Buffer.from("event"),
       organizer.toBuffer(),
-      Buffer.from(eventId),
+      eventIdBuffer,
     ],
     programId
   );
@@ -123,7 +129,11 @@ export function getTierPDA(
   programId: PublicKey
 ): [PublicKey, number] {
   return PublicKey.findProgramAddressSync(
-    [Buffer.from(PDA_SEEDS.TIER), eventPDA.toBuffer(), Buffer.from(tierId)],
+    [
+      Buffer.from("tier"), // Sesuaikan dengan b"tier" di Rust
+      eventPDA.toBuffer(), 
+      Buffer.from(tierId)
+    ],
     programId
   );
 }
@@ -150,7 +160,11 @@ export function getAgentPDA(
   programId: PublicKey
 ): [PublicKey, number] {
   return PublicKey.findProgramAddressSync(
-    [Buffer.from(PDA_SEEDS.AGENT), owner.toBuffer(), Buffer.from(agentId)],
+    [
+      Buffer.from("agent"), 
+      owner.toBuffer(), 
+      Buffer.from(agentId)
+    ],
     programId
   );
 }
@@ -195,7 +209,11 @@ export function getEscrowPDA(
   programId: PublicKey
 ): [PublicKey, number] {
   return PublicKey.findProgramAddressSync(
-    [Buffer.from(PDA_SEEDS.ESCROW), agentPDA.toBuffer(), owner.toBuffer()],
+    [
+      Buffer.from("escrow"), 
+      agentPDA.toBuffer(), 
+      owner.toBuffer()
+    ],
     programId
   );
 }

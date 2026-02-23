@@ -18,7 +18,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 // Program ID
-const PROGRAM_ID = new PublicKey('DUJBE41hSUh178BujH79WtirW8p9A3aA3WNCdk6ibyPp');
+const PROGRAM_ID = new PublicKey('5fQA4eCdUtCJPDhjGfb6nn47RhVfKJT2dW5iHuQaeH2n');
 
 // Configuration from environment
 const RPC_URL = process.env.RPC_URL || 'https://api.devnet.solana.com';
@@ -146,7 +146,7 @@ async function buyTicketWithEscrow(
       agent: agentPDA,
       escrow: escrowPDA,
       organizer: organizerPubkeyObj,
-      authority: schedulerKeypair.publicKey,
+      authority: schedulerKeypair.publicKey, // Scheduler yang bayar gas fee
       systemProgram: SystemProgram.programId,
     })
     .signers([schedulerKeypair])
