@@ -6,6 +6,8 @@ pub mod instructions;
 
 use instructions::escrow::*;
 
+use anchor_spl::token::{mint_to, MintTo};
+
 declare_id!("EXZ9u1aF8gvHeUsKM8eTRzWDo88WGMKWZJLbvM8bYetJ");
 
 #[program]
@@ -174,6 +176,38 @@ pub mod pulse {
         agent_owner: Pubkey,
     ) -> Result<()> {
         instructions::escrow::buy_ticket_with_escrow(ctx, tier_id, agent_owner)
+    }
+
+    /// =====================================
+    /// CORE FUNCTION: MINT TICKET NFT
+    /// =====================================
+    pub fn mint_ticket_nft(ctx: Context<MintTicketNFT>) -> Result<()> {
+        let event = &ctx.accounts.event;
+        
+        let organizer_key = event.organizer.key();
+        let event_id_bytes = event.event_id.as_bytes();
+        
+        let bump_vector = event.bump.to_le_bytes();
+        let signer_seeds: &[&[&[u8]]] = &[&[
+            b"event",
+            organizer_key.as_ref(),
+            event_id_bytes,
+            &bump_vector,
+        ]];
+
+        let cpi_accounts = MintTo {
+            mint: ctx.accounts.ticket_mint.to_account_info(),
+            to: ctx.accounts.buyer_token_account.to_account_info(),
+            authority: ctx.accounts.event.to_account_info(),
+        };
+        
+        let cpi_program = ctx.accounts.token_program.to_account_info();
+        let cpi_ctx = CpiContext::new_with_signer(cpi_program, cpi_accounts, signer_seeds);
+        
+        mint_to(cpi_ctx, 1)?;
+
+        msg!("True NFT Ticket minted successfully to buyer!");
+        Ok(())
     }
 }
 
@@ -345,4 +379,36 @@ pub struct UpdateAgentConfig<'info> {
         constraint = owner.key() == agent.owner @ TixError::Unauthorized
     )]
     pub owner: Signer<'info>,
+}
+
+#[derive(Accounts)]
+pub struct MintTicketNFT<'info> {
+    #[account(mut)]
+    pub event: Account<'info, Event>,
+
+    #[account(
+        init,
+        payer = authority,
+        mint::decimals = 0,
+        mint::authority = event,
+    )]
+    pub ticket_mint: Account<'info, anchor_spl::token::Mint>,
+
+    #[account(
+        init,
+        payer = authority,
+        associated_token::mint = ticket_mint,
+        associated_token::authority = buyer,
+    )]
+    pub buyer_token_account: Account<'info, anchor_spl::token::TokenAccount>,
+
+    /// CHECK: The user receiving the NFT
+    pub buyer: UncheckedAccount<'info>,
+
+    #[account(mut)]
+    pub authority: Signer<'info>,
+
+    pub token_program: Program<'info, anchor_spl::token::Token>,
+    pub associated_token_program: Program<'info, anchor_spl::associated_token::AssociatedToken>,
+    pub system_program: Program<'info, System>,
 }

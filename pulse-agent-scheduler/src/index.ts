@@ -15,8 +15,8 @@ import {
 import dotenv from 'dotenv';
 import express from 'express'; 
 import cors from 'cors';     
-// //TESTING YAAAAA: Import langsung dari .ts biar ga pusing masalah .js extension
 import { IDL } from './idl.ts';
+import { getAssociatedTokenAddressSync } from '@solana/spl-token';
 
 dotenv.config();
 
@@ -78,8 +78,6 @@ function getEscrowPDA(agentPDA: PublicKey, owner: PublicKey): [PublicKey, number
 /**
  * CORE LOGIC - ANTI-CORRUPTION VERSION
  */
-// pulse-agent-scheduler/src/index.ts
-
 async function buyTicketWithEscrow(
   program: any,
   schedulerKeypair: Keypair,
@@ -97,11 +95,20 @@ async function buyTicketWithEscrow(
   const [agentPDA] = getAgentPDA(agentOwnerPubkey, agentId);
   const [escrowPDA] = getEscrowPDA(agentPDA, agentOwnerPubkey);
 
-  console.log(`🤖 Bot triggering purchase for Agent: ${agentId}`);
+  // //NEW: Generate KTP-nya si NFT (Mint Account)
+  const ticketMintKeypair = Keypair.generate();
+  
+  // //NEW: Hitung alamat dompet NFT buat si Buyer (ATA)
+  const buyerATA = getAssociatedTokenAddressSync(
+    ticketMintKeypair.publicKey,
+    agentOwnerPubkey
+  );
 
-  // //FIXED: Kirim agentOwnerPubkey sebagai argumen kedua
+  console.log(`🤖 Bot buying & minting NFT for: ${agentId}`);
+
+  // //FIXED: Gabungin dua instruksi jadi satu Transaction
   return await program.methods
-    .buyTicketWithEscrow(tierId, agentOwnerPubkey) 
+    .buyTicketWithEscrow(tierId, agentOwnerPubkey)
     .accounts({
       event: eventPDA,
       tier: tierPDA,
@@ -111,9 +118,26 @@ async function buyTicketWithEscrow(
       authority: schedulerKeypair.publicKey,
       systemProgram: SystemProgram.programId,
     })
-    .signers([schedulerKeypair])
+    .postInstructions([
+      // //NEW: Tambahin instruksi Mint NFT tepat setelah bayar
+      await program.methods
+        .mintTicketNft()
+        .accounts({
+          event: eventPDA,
+          ticketMint: ticketMintKeypair.publicKey,
+          buyerTokenAccount: buyerATA,
+          buyer: agentOwnerPubkey,
+          authority: schedulerKeypair.publicKey,
+          tokenProgram: new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA'),
+          associatedTokenProgram: new PublicKey('ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL'),
+          systemProgram: SystemProgram.programId,
+        })
+        .instruction()
+    ])
+    .signers([schedulerKeypair, ticketMintKeypair]) // //PENTING: ticketMintKeypair harus ikut tanda tangan!
     .rpc();
 }
+
 /**
  * API Trigger
  */

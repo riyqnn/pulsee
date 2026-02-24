@@ -1,9 +1,12 @@
 import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { PublicKey } from '@solana/web3.js';
 import { usePrimaryMarket } from '../../hooks/usePrimaryMarket';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { useAgentsContext } from '../../contexts/AgentsContext';
+import { useProgram } from '../../hooks/useProgram'; // //NEW: Butuh ini buat ambil program instance
+import { getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID } from '@solana/spl-token';
+import { Keypair, SystemProgram, PublicKey } from '@solana/web3.js';
+import { getTierPDA, getAgentPDA, getEscrowPDA, PROGRAM_ID } from '../../utils/accounts'; // //NEW: Import helpers
 
 interface EventDetailModalProps {
   event: {
@@ -15,6 +18,8 @@ interface EventDetailModalProps {
     description?: string;
     publicKey: PublicKey;
     soldOut: boolean;
+    organizer_pubkey?: string; // Tambahin biar aman
+    organizer?: string;        // Handle dua kemungkinan casing
     ticketTiers: {
       name: string;
       tierId: string;
@@ -27,13 +32,14 @@ interface EventDetailModalProps {
 }
 
 export const EventDetailModal = ({ event, onClose }: EventDetailModalProps) => {
-  const { buyTicket, isReady } = usePrimaryMarket();
+  const { isReady } = usePrimaryMarket();
+  const { program } = useProgram(); // //FIXED: Tarik program ke sini cu!
   const { publicKey } = useWallet();
   const { agents, refresh } = useAgentsContext();
   const [loading, setLoading] = useState(false);
   const [selectedTier, setSelectedTier] = useState<string | null>(null);
 
-  // Get the first active agent (simplified - no autoPurchaseEnabled check)
+  // Get the first active agent
   const activeAgent = useMemo(() => {
     return agents.find(a => {
       const acc = a.account as any;
@@ -43,88 +49,121 @@ export const EventDetailModal = ({ event, onClose }: EventDetailModalProps) => {
 
   useEffect(() => {
     document.body.style.overflow = 'hidden';
-
-    // Refresh agents when modal opens
     refresh();
-
     return () => {
       document.body.style.overflow = '';
     };
   }, [refresh]);
 
-
   const handleBuyTicket = async (tierId: string, useAgentForPurchase: boolean = false) => {
-    // 1. Validasi Awal: Wallet User harus Connect buat bayar gas (manual) atau authorize bot (hybrid)
-    if (!publicKey) return alert('CONNECT WALLET FIRST');
-
-    setLoading(true);
-    setSelectedTier(tierId);
-
-    try {
-      if (useAgentForPurchase) {
-        // CASE: BOT JOKI (AGENT) YANG BELIIN
-        
-        // Pengecekan apakah ada agent yang sedang aktif
-        if (!activeAgent) {
-          alert('GAK ADA AGENT AKTIF, CU! Aktifin dulu di Command Center.');
-          setLoading(false);
-          return;
-        }
-
-        console.log("🤖 Asking Backend Agent to buy...");
-        
-        // Ambil Agent ID dengan aman (handle casing Rust/TS)
-        const agentId = (activeAgent.account as any).agentId || (activeAgent.account as any).agent_id;
-        
-        /**
-         * PENTING: organizerPubkey harus alamat wallet Organizer (dari Supabase/SC).
-         * Jangan pake event.publicKey karena itu alamat PDA-nya!
-         */
-        const organizerWallet = (event as any).organizer_pubkey || (event as any).organizer;
-
-        // Tembak request ke Backend Scheduler lo
-        const response = await fetch('http://localhost:3001/trigger-agent', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            agentOwner: publicKey.toBase58(),
-            agentId: agentId,
-            organizerPubkey: organizerWallet, // Alamat Wallet pembuat event
-            eventId: event.id,                // Slug ID (misal: "mensrea")
-            tierId: tierId,
-          }),
-        });
-
-        const result = await response.json();
-        
-        if (result.success) {
-          alert(`MISSION SUCCESS! Tiket dibeli Bot. TX: ${result.tx}`);
-          onClose();
-        } else {
-          // Tangkap error detail dari Backend (misal: Insufficient Escrow Balance)
-          throw new Error(result.error || 'Backend failure');
-        }
-
-      } else {
-        // CASE: BELI MANUAL (DIRECT)
-        
-        // Logic beli manual tetep narik data langsung ke Smart Contract lewat Hook
-        await buyTicket({
-          eventPDA: event.publicKey, // Kalau manual, hook usePrimaryMarket butuh alamat PDA-nya
-          tierId: tierId,
-        });
-        
-        alert('TICKET PURCHASED SUCCESSFULLY');
-        onClose();
+      // 1. Initial Validation - Sekarang program udah ada
+      if (!publicKey || !program) {
+          console.error("❌ Wallet not connected or Program not initialized");
+          return alert('PLEASE CONNECT YOUR WALLET TO PROCEED');
       }
-    } catch (error: any) {
-      console.error('Purchase process failed:', error);
-      // Parsing error message biar user gak bingung baca object mentah
-      alert(`FAILED: ${error.message || 'Transaction error'}`);
-    } finally {
-      setLoading(false);
-      setSelectedTier(null);
-    }
+
+      setLoading(true);
+      setSelectedTier(tierId);
+
+      try {
+          if (useAgentForPurchase) {
+              /**
+               * CASE: AI AGENT AUTONOMOUS PURCHASE
+               */
+              if (!activeAgent) {
+                  alert('ACTIVE AGENT NOT FOUND! Please initialize an agent in the Command Center first.');
+                  setLoading(false);
+                  return;
+              }
+
+              console.log("🤖 [AGENT MODE] Requesting background purchase via Pulse Scheduler...");
+              
+              const agentId = (activeAgent.account as any).agentId || (activeAgent.account as any).agent_id;
+              const organizerWallet = (event as any).organizer_pubkey || (event as any).organizer;
+
+              const response = await fetch('http://localhost:3001/trigger-agent', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                      agentOwner: publicKey.toBase58(),
+                      agentId: agentId,
+                      organizerPubkey: organizerWallet,
+                      eventId: event.id,
+                      tierId: tierId,
+                  }),
+              });
+
+              const result = await response.json();
+              
+              if (result.success) {
+                  console.log(`✅ [AGENT SUCCESS] Transaction Signature: ${result.tx}`);
+                  alert(`MISSION ACCOMPLISHED! Your agent has secured the ticket. \n\nNFT Minted & Delivered.`);
+                  onClose();
+              } else {
+                  throw new Error(result.error || 'Agent execution failed');
+              }
+
+          } else {
+              /**
+               * CASE: MANUAL DIRECT PURCHASE (BUNDLED WITH NFT MINT)
+               */
+              console.log("⚡ [MANUAL MODE] Initializing Bundled Transaction (Payment + NFT Mint)...");
+
+              const ticketMintKeypair = Keypair.generate();
+              const buyerATA = getAssociatedTokenAddressSync(
+                  ticketMintKeypair.publicKey,
+                  publicKey
+              );
+
+              // Ambil PDA secara real-time
+              const agentId = (activeAgent?.account as any)?.agentId || "DEFAULT_AGENT"; 
+              const [agentPDA] = getAgentPDA(publicKey, agentId, PROGRAM_ID);
+              const [escrowPDA] = getEscrowPDA(agentPDA, publicKey, PROGRAM_ID);
+              const [tierPDA] = getTierPDA(event.publicKey, tierId, PROGRAM_ID);
+
+              const organizerPubkey = new PublicKey((event as any).organizer_pubkey || (event as any).organizer);
+
+              // Construct the bundled transaction
+              const tx = await program.methods
+                  .buyTicketWithEscrow(tierId, publicKey) 
+                  .accounts({
+                      event: event.publicKey,
+                      tier: tierPDA,
+                      agent: agentPDA,
+                      escrow: escrowPDA,
+                      organizer: organizerPubkey,
+                      authority: publicKey,
+                      systemProgram: SystemProgram.programId,
+                  })
+                  .postInstructions([
+                      await program.methods
+                          .mintTicketNft()
+                          .accounts({
+                              event: event.publicKey,
+                              ticketMint: ticketMintKeypair.publicKey,
+                              buyerTokenAccount: buyerATA,
+                              buyer: publicKey,
+                              authority: publicKey,
+                              tokenProgram: TOKEN_PROGRAM_ID,
+                              associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+                              systemProgram: SystemProgram.programId,
+                          })
+                          .instruction()
+                  ])
+                  .signers([ticketMintKeypair]) 
+                  .rpc();
+
+              console.log(`✅ [MANUAL SUCCESS] Bundled TX Signature: ${tx}`);
+              alert('TICKET SECURED! The True NFT has been minted directly to your wallet.');
+              onClose();
+          }
+      } catch (error: any) {
+          console.error('🚨 [CRITICAL ERROR] Purchase process failed:', error);
+          alert(`FAILED: ${error.message || 'Transaction error'}`);
+      } finally {
+          setLoading(false);
+          setSelectedTier(null);
+      }
   };
 
   const handleBackdropClick = (e: React.MouseEvent) => {

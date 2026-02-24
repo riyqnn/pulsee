@@ -195,15 +195,14 @@ const getEvent = useCallback(
    */
   const getEventWithTiers = useCallback(
     async (eventPDA: PublicKey): Promise<EventWithTiers | null> => {
-      if (!connection) {
+      if (!connection || !program) { // //FIXED: Tambah check program
         return null;
       }
 
       try {
-        const event = await fetchEvent(connection, eventPDA);
+        // //FIXED: Tambahin parameter 'program' di sini, cu!
+        const event = await fetchEvent(connection, eventPDA, program); 
         if (!event) return null;
-
-        if (!program) return null;
 
         const tiers = await fetchTicketTiers(connection, eventPDA, PROGRAM_ID, program);
 

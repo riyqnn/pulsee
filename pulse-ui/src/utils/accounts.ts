@@ -14,6 +14,7 @@ import type {
   AgentEscrow,
   ProgramAccount,
 } from '../types/pulse';
+import { TOKEN_PROGRAM_ID } from '@solana/spl-token';
 
 // Removed types (no longer in simplified MVP):
 // User, Ticket, MarketListing, GlobalConfig - use Supabase for offchain data
@@ -579,12 +580,39 @@ export async function fetchConfig(
  * Fetch all tickets owned by a user - REMOVED in MVP
  */
 export async function fetchUserTickets(
-  _connection: Connection,
-  _owner: PublicKey,
-  _programId: PublicKey
-): Promise<never[]> {
-  // Not implemented in simplified MVP - tickets managed offchain
-  return [];
+  connection: Connection,
+  owner: PublicKey,
+  programId: PublicKey
+): Promise<any[]> {
+  try {
+    // 1. Cari semua Token Account (ATA) milik user yang Token Program-nya standar
+    const tokenAccounts = await connection.getParsedTokenAccountsByOwner(owner, {
+      programId: TOKEN_PROGRAM_ID,
+    });
+
+    // 2. Filter hanya token yang jumlahnya 1 (NFT) 
+    // Di tahap advanced, lo bisa filter berdasarkan Mint Authority = Event PDA lo
+    const tickets = tokenAccounts.value
+      .filter((obj) => {
+        const amount = obj.account.data.parsed.info.tokenAmount.uiAmount;
+        return amount === 1; // True NFT supply is 1
+      })
+      .map((obj) => {
+        return {
+          publicKey: obj.pubkey,
+          account: {
+            mint: new PublicKey(obj.account.data.parsed.info.mint),
+            owner: owner,
+            // Data tier dll bisa lo simpen di metadata nanti
+          }
+        };
+      });
+
+    return tickets;
+  } catch (error) {
+    console.error("Error fetching on-chain tickets:", error);
+    return [];
+  }
 }
 
 // ============== Utility Functions ==============

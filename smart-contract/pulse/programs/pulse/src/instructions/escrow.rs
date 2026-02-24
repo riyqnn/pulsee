@@ -1,4 +1,6 @@
 use anchor_lang::prelude::*;
+use anchor_spl::token::{Token};
+use anchor_spl::associated_token::AssociatedToken;
 
 use crate::state::{AgentEscrow, AIAgent, Event, TicketTier};
 use crate::error::TixError;
@@ -79,14 +81,12 @@ pub fn withdraw_from_escrow(ctx: Context<WithdrawFromEscrow>, amount: u64) -> Re
 /// =====================================
 
 /// Buy ticket using agent's escrow balance
-/// Can be called by anyone (scheduler service) - no user signature needed for payment
-/// Funds come from escrow, not from user wallet
 pub fn buy_ticket_with_escrow(
     ctx: Context<BuyTicketWithEscrow>,
     _tier_id: String,
     _agent_owner: Pubkey, 
 ) -> Result<()> {
-   let escrow_info = ctx.accounts.escrow.to_account_info();
+    let escrow_info = ctx.accounts.escrow.to_account_info();
     let organizer_info = ctx.accounts.organizer.to_account_info();
 
     let event = &mut ctx.accounts.event;
@@ -101,7 +101,7 @@ pub fn buy_ticket_with_escrow(
     require!(agent.is_active, TixError::AgentInactive);
     require!(agent.auto_purchase_enabled, TixError::AutoPurchaseDisabled);
 
-   let price = tier.price;
+    let price = tier.price;
     require!(escrow.balance >= price, TixError::InsufficientEscrowBalance);
 
     let remaining_budget = agent.total_budget.checked_sub(agent.spent_budget)
@@ -136,22 +136,14 @@ pub fn buy_ticket_with_escrow(
 pub struct CreateEscrow<'info> {
     #[account(
         mut,
-        seeds = [
-            b"agent",
-            owner.key().as_ref(),
-            agent.agent_id.as_bytes()
-        ],
+        seeds = [b"agent", owner.key().as_ref(), agent.agent_id.as_bytes()],
         bump = agent.bump
     )]
     pub agent: Account<'info, AIAgent>,
 
     #[account(
         init,
-        seeds = [
-            b"escrow",
-            agent.key().as_ref(),
-            owner.key().as_ref()
-        ],
+        seeds = [b"escrow", agent.key().as_ref(), owner.key().as_ref()],
         bump,
         payer = owner,
         space = AgentEscrow::SPACE
@@ -171,11 +163,7 @@ pub struct CreateEscrow<'info> {
 pub struct DepositToEscrow<'info> {
     #[account(
         mut,
-        seeds = [
-            b"escrow",
-            agent.key().as_ref(),
-            owner.key().as_ref()
-        ],
+        seeds = [b"escrow", agent.key().as_ref(), owner.key().as_ref()],
         bump = escrow.bump
     )]
     pub escrow: Account<'info, AgentEscrow>,
@@ -195,11 +183,7 @@ pub struct DepositToEscrow<'info> {
 pub struct WithdrawFromEscrow<'info> {
     #[account(
         mut,
-        seeds = [
-            b"escrow",
-            agent.key().as_ref(),
-            owner.key().as_ref()
-        ],
+        seeds = [b"escrow", agent.key().as_ref(), owner.key().as_ref()],
         bump = escrow.bump
     )]
     pub escrow: Account<'info, AgentEscrow>,
@@ -230,7 +214,6 @@ pub struct BuyTicketWithEscrow<'info> {
 
     #[account(
         mut,
-        // //FIXED: Gunakan agent_owner dari argumen, JANGAN baca dari account lain
         seeds = [b"agent", agent_owner.as_ref(), agent.agent_id.as_bytes()],
         bump = agent.bump
     )]
@@ -238,7 +221,6 @@ pub struct BuyTicketWithEscrow<'info> {
 
     #[account(
         mut,
-        // //FIXED: Escrow pake seeds static juga
         seeds = [b"escrow", agent.key().as_ref(), agent_owner.as_ref()],
         bump = escrow.bump
     )]
@@ -252,5 +234,37 @@ pub struct BuyTicketWithEscrow<'info> {
     pub organizer: UncheckedAccount<'info>,
 
     pub authority: Signer<'info>,
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct MintTicketNFT<'info> {
+    #[account(mut)]
+    pub event: Account<'info, Event>,
+
+    #[account(
+        init,
+        payer = authority,
+        mint::decimals = 0,
+        mint::authority = event,
+    )]
+    pub ticket_mint: Account<'info, anchor_spl::token::Mint>,
+
+    #[account(
+        init,
+        payer = authority,
+        associated_token::mint = ticket_mint,
+        associated_token::authority = buyer,
+    )]
+    pub buyer_token_account: Account<'info, anchor_spl::token::TokenAccount>,
+
+    /// CHECK: The user receiving the NFT
+    pub buyer: UncheckedAccount<'info>,
+
+    #[account(mut)]
+    pub authority: Signer<'info>,
+
+    pub token_program: Program<'info, Token>,
+    pub associated_token_program: Program<'info, AssociatedToken>,
     pub system_program: Program<'info, System>,
 }
