@@ -595,7 +595,7 @@ export async function fetchUserTickets(
     const tickets = tokenAccounts.value
       .filter((obj) => {
         const amount = obj.account.data.parsed.info.tokenAmount.uiAmount;
-        return amount === 1; // True NFT supply is 1
+        return amount === 1; // A standard NFT has a supply of 1
       })
       .map((obj) => {
         return {

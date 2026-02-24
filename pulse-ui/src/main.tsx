@@ -6,6 +6,7 @@ import { WalletProvider } from './components/WalletProvider.tsx';
 import { AgentsProvider } from './contexts/AgentsContext.tsx';
 import { EventsProvider } from './contexts/EventsContext.tsx';
 import { MarketProvider } from './contexts/MarketContext.tsx';
+import { ToastProvider } from './contexts/ToastContext';
 import './index.css';
 
 createRoot(document.getElementById('root')!).render(
@@ -14,9 +15,11 @@ createRoot(document.getElementById('root')!).render(
       <AgentsProvider>
         <EventsProvider autoRefresh={false}>
           <MarketProvider>
-            <BrowserRouter>
-              <App />
-            </BrowserRouter>
+            <ToastProvider>
+              <BrowserRouter>
+                <App />
+              </BrowserRouter>
+            </ToastProvider>
           </MarketProvider>
         </EventsProvider>
       </AgentsProvider>

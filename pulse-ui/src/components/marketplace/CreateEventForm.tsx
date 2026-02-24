@@ -3,11 +3,13 @@ import { useEvents } from '../../hooks/useEvents';
 import { NeoCard, NeoInput, NeoButton } from '../neo';
 import { solToLamports, getEventPDA, PROGRAM_ID } from '../../utils/accounts';
 import { useWallet } from '@solana/wallet-adapter-react';
+import { useToast } from '../../contexts/ToastContext';
 import { supabase } from '../../utils/supabase';
 
 export const CreateEventForm = ({ onSuccess }: { onSuccess?: () => void }) => {
   const { publicKey } = useWallet();
   const { createEvent, createTicketTier } = useEvents();
+  const { addToast } = useToast();
   const [loading, setLoading] = useState(false);
   
   const [eventData, setEventData] = useState({
@@ -41,7 +43,10 @@ export const CreateEventForm = ({ onSuccess }: { onSuccess?: () => void }) => {
   };
 
   const handlePublish = async () => {
-      if (!publicKey) return alert("Connect wallet!");
+      if (!publicKey) {
+        addToast("Please connect your wallet to create an event.", 'error');
+        return;
+      }
       setLoading(true);
 
       try {
@@ -75,10 +80,10 @@ export const CreateEventForm = ({ onSuccess }: { onSuccess?: () => void }) => {
           }]);
 
         if (sbError) throw sbError;
-        alert("SUCCESS! Hybrid Event is Live! 🚀");
+        addToast("Event successfully created and is now live!", 'success');
         onSuccess?.();
       } catch (err: any) {
-        alert(`Gagal: ${err.message}`);
+        addToast(`Event creation failed: ${err.message}`, 'error');
       } finally {
         setLoading(false);
       }

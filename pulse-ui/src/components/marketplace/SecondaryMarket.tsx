@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { PublicKey } from '@solana/web3.js';
 import { NeoCard, NeoButton, NeoInput } from '../neo';
 import { useAgentsContext } from '../../contexts/AgentsContext';
+import { useToast } from '../../contexts/ToastContext';
 import { useAIAgent } from '../../hooks/useAIAgent';
 import { getEscrowPDA, lamportsToSol, PROGRAM_ID } from '../../utils/accounts';
 import { useWallet } from '@solana/wallet-adapter-react';
@@ -12,6 +13,7 @@ import type { AgentEscrow } from '../../types/pulse';
 export const SecondaryMarket = () => {
   const { publicKey } = useWallet();
   const { agents, loading: agentsLoading } = useAgentsContext();
+  const { addToast } = useToast();
   const { getEscrow, createEscrow, depositToEscrow, withdrawFromEscrow, loading } = useAIAgent();
   const [escrowData, setEscrowData] = useState<Map<string, AgentEscrow>>(new Map());
   const [selectedAgent, setSelectedAgent] = useState<PublicKey | null>(null);
@@ -51,7 +53,7 @@ export const SecondaryMarket = () => {
       await fetchEscrowAccounts();
     } catch (error) {
       console.error('Failed to create escrow:', error);
-      alert(`Failed to create escrow: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      addToast(`Failed to create escrow: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
     } finally {
       setActionLoading(false);
     }
@@ -61,7 +63,7 @@ export const SecondaryMarket = () => {
     if (!publicKey || !selectedAgent) return;
     const amountSol = parseFloat(amount);
     if (!amountSol || amountSol <= 0 || isNaN(amountSol)) {
-      alert('Please enter a valid amount');
+      addToast('Please enter a valid amount', 'error');
       return;
     }
 
@@ -75,7 +77,7 @@ export const SecondaryMarket = () => {
       setShowDepositModal(false);
     } catch (error) {
       console.error('Failed to deposit:', error);
-      alert(`Failed to deposit: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      addToast(`Failed to deposit: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
     } finally {
       setActionLoading(false);
     }
@@ -85,7 +87,7 @@ export const SecondaryMarket = () => {
     if (!publicKey || !selectedAgent) return;
     const amountSol = parseFloat(amount);
     if (!amountSol || amountSol <= 0 || isNaN(amountSol)) {
-      alert('Please enter a valid amount');
+      addToast('Please enter a valid amount', 'error');
       return;
     }
 
@@ -94,7 +96,7 @@ export const SecondaryMarket = () => {
 
     const amountLamports = Math.floor(amountSol * 1e9);
     if (amountLamports > Number(escrow.balance)) {
-      alert('Insufficient escrow balance');
+      addToast('Insufficient escrow balance', 'error');
       return;
     }
 
@@ -107,7 +109,7 @@ export const SecondaryMarket = () => {
       setShowWithdrawModal(false);
     } catch (error) {
       console.error('Failed to withdraw:', error);
-      alert(`Failed to withdraw: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      addToast(`Failed to withdraw: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
     } finally {
       setActionLoading(false);
     }

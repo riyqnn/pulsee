@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PublicKey } from '@solana/web3.js';
+import { useToast } from '../../contexts/ToastContext';
 import { NeoCard, NeoInput, NeoButton } from '../neo';
 
 interface AddBudgetModalProps {
@@ -16,11 +17,12 @@ export const AddBudgetModal: React.FC<AddBudgetModalProps> = ({
 }) => {
   const [amount, setAmount] = useState('');
   const [loading, setLoading] = useState(false);
+  const { addToast } = useToast();
 
   const handleSubmit = async () => {
     const amountSol = parseFloat(amount);
     if (!amountSol || amountSol <= 0 || isNaN(amountSol)) {
-      alert('Please enter a valid amount');
+      addToast('Please enter a valid amount', 'error');
       return;
     }
 

@@ -21,7 +21,7 @@ export const MyTickets = ({ ownerPublicKey }: MyTicketsProps) => {
 
     try {
       setLoading(true);
-      console.log("🔍 Scanning Blockchain for True NFTs...");
+      console.log("🔍 Scanning blockchain for ticket NFTs...");
 
       // 1. Ambil semua token accounts milik user
       const tokenAccounts = await connection.getParsedTokenAccountsByOwner(ownerPublicKey, {
@@ -83,8 +83,8 @@ export const MyTickets = ({ ownerPublicKey }: MyTicketsProps) => {
   if (loading) {
     return (
       <div className="text-center py-20 font-mono">
-        <div className="inline-block w-12 h-12 border-8 border-black border-t-[#FF00F5] rounded-full animate-spin mb-4" />
-        <p className="font-black text-xl italic uppercase">Scanning Neural Network...</p>
+        <div className="inline-block w-12 h-12 border-8 border-black border-t-[#00FF41] rounded-full animate-spin mb-4" />
+        <p className="font-black text-xl italic uppercase">Scanning On-Chain Assets...</p>
       </div>
     );
   }
@@ -97,7 +97,7 @@ export const MyTickets = ({ ownerPublicKey }: MyTicketsProps) => {
           Owned<br />Assets
         </h2>
         <div className="absolute top-0 right-0 bg-[#00FF41] border-4 border-black px-4 py-2 font-mono font-bold shadow-[4px_4px_0_0_#000000]">
-          {tickets.length} TRUE_NFTs
+          {tickets.length} TICKETS
         </div>
       </div>
 
@@ -155,7 +155,7 @@ export const MyTickets = ({ ownerPublicKey }: MyTicketsProps) => {
                   {/* On-Chain Verification Stamp */}
                   <div className="flex gap-2">
                     <div className="flex-1 border-4 border-black bg-[#FFEB3B] text-black font-black text-center py-2 text-sm italic shadow-[2px_2px_0_0_#000000]">
-                      TRUE NFT
+                      VERIFIED
                     </div>
                     <button className="bg-black text-white px-4 py-2 border-4 border-black hover:bg-[#FF00F5] transition-colors">
                       <span className="font-black text-sm">QR</span>

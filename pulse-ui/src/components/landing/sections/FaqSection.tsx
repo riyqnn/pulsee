@@ -7,30 +7,30 @@ const faqData = [
   },
   {
     question: 'How do the AI agents actually work?',
-    answer: 'You deposit USDC into a secure on-chain escrow, configure your agent with parameters (e.g., event, max price), and deploy it. The agent, a smart program, then watches the blockchain for the ticket sale to begin and executes the purchase automatically if your conditions are met.',
+    answer: 'You create an agent, fund its dedicated on-chain escrow with SOL, and assign it a "mission" for a specific event. You define the strategy (like ticket tiers and quantity). The agent then executes this mission on-chain, purchasing tickets automatically based on your rules.',
   },
   {
     question: 'Is this secure? Where do my funds go?',
-    answer: 'Pulse is non-custodial and built for security. Your funds are held in a decentralized escrow contract on Solana, not by us. You retain full control and can withdraw your funds at any time before a purchase is made. The entire process is transparent on the blockchain.',
+    answer: 'Pulse is non-custodial and built for security. Your funds are held in a decentralized escrow contract on Solana, not by us. You retain full control and can withdraw your SOL at any time. The entire process is transparent on the blockchain.',
   },
   {
-    question: 'What happens if an agent fails to get a ticket?',
+    question: 'What happens if an agent fails its mission?',
     answer: 'While our agents give you a significant advantage, success isn\'t always guaranteed in high-demand sales. If your agent is unsuccessful, your funds remain securely in the escrow, and you can either withdraw them or redeploy the agent for a different event or the secondary market.',
   },
   {
-    question: 'What can I do on the secondary marketplace?',
-    answer: 'The secondary market is a peer-to-peer exchange for tickets acquired through the platform. If you miss an initial sale, you can buy tickets from other users. If you can no longer attend an event, you can list your ticket for sale.',
+    question: 'What is the "Turbo" mode?',
+    answer: 'Turbo mode is an aggressive strategy for highly anticipated events. When enabled, your agent will submit transactions more frequently and rapidly to maximize its chances of success, though this may result in higher network fees. Use it wisely for drops you can\'t afford to miss.',
   },
 ];
 
 export const FaqSection = () => {
   return (
-    <section className="py-20 sm:py-24">
+    <section className="py-16 sm:py-24">
       <div className="container mx-auto px-6">
-        <h2 className="text-4xl md:text-5xl font-extrabold tracking-tighter text-center mb-4">
+        <h2 className="text-4xl sm:text-5xl font-extrabold tracking-tighter text-center mb-4">
           Your Questions, Answered
         </h2>
-        <p className="text-xl text-center max-w-2xl mx-auto mb-16 text-gray-700">
+        <p className="text-lg sm:text-xl text-center max-w-2xl mx-auto mb-12 sm:mb-16 text-gray-700">
           Got questions? We've got answers. Here's a rundown of the most common
           inquiries we get about the Pulse protocol.
         </p>

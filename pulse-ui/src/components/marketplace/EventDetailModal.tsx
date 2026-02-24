@@ -7,6 +7,7 @@ import { useProgram } from '../../hooks/useProgram';
 import { getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import { Keypair, SystemProgram, PublicKey } from '@solana/web3.js';
 import { getTierPDA, getAgentPDA, getEscrowPDA, PROGRAM_ID } from '../../utils/accounts';
+import { useToast } from '../../contexts/ToastContext';
 import { supabase } from '../../utils/supabase';
 
 export const EventDetailModal = ({ event, onClose }: any) => {
@@ -14,6 +15,7 @@ export const EventDetailModal = ({ event, onClose }: any) => {
   const { program } = useProgram();
   const { publicKey } = useWallet();
   const { agents, refresh } = useAgentsContext();
+  const { addToast } = useToast();
   const [loading, setLoading] = useState(false);
   const [isTurbo, setIsTurbo] = useState(false); // Mode Perang Barbar
   
@@ -34,8 +36,14 @@ export const EventDetailModal = ({ event, onClose }: any) => {
 
   // SEKTOR 3: LAUNCH MISSION WITH TURBO & FALLBACK LOGIC
   const handleDeployWarMission = async () => {
-    if (!publicKey || !activeAgent) return alert("WALLET & ACTIVE AGENT REQUIRED!");
-    if (!priorityTier) return alert("SELECT AT LEAST ONE PRIORITY TIER!");
+    if (!publicKey || !activeAgent) {
+      addToast("An active agent and connected wallet are required to deploy a mission.", 'error');
+      return;
+    }
+    if (!priorityTier) {
+      addToast("Please select at least one priority tier for your mission.", 'warning');
+      return;
+    }
 
     setLoading(true);
     try {
@@ -59,10 +67,10 @@ export const EventDetailModal = ({ event, onClose }: any) => {
 
       if (error) throw error;
 
-      alert(`STRATEGY LOCKED & LOADED! 🚀\nMode: ${isTurbo ? '🔥 TURBO (Aggressive)' : '🛡️ NORMAL (Sequential)'}`);
+      addToast(`Mission strategy locked in! Mode: ${isTurbo ? 'Turbo (Aggressive)' : 'Normal (Sequential)'}`, 'success');
       onClose();
     } catch (error: any) {
-      alert(`STRATEGY FAILED: ${error.message}`);
+      addToast(`Strategy deployment failed: ${error.message}`, 'error');
     } finally {
       setLoading(false);
     }

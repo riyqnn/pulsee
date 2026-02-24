@@ -6,6 +6,7 @@ import { LiveLog } from './LiveLog';
 import { AgentSettings } from './AgentSettings';
 import { EscrowDashboard } from './EscrowDashboard';
 import { useAgentsContext } from '../../contexts/AgentsContext';
+import { useToast } from '../../contexts/ToastContext';
 import { useAIAgent } from '../../hooks/useAIAgent';
 import { lamportsToSol, getEscrowPDA, PROGRAM_ID } from '../../utils/accounts';
 import { useWallet } from '@solana/wallet-adapter-react';
@@ -15,6 +16,7 @@ export const AgentCommandCenter = () => {
   const { publicKey } = useWallet();
   const { agents, totalTicketsPurchased, totalBudgetSpent, loading, refresh } = useAgentsContext();
   const { getEscrow, activateAgent, deactivateAgent, toggleAutoPurchase, addAgentBudget } = useAIAgent();
+  const { addToast } = useToast();
   
   const [showEscrowFor, setShowEscrowFor] = useState<PublicKey | null>(null);
   const [showBudgetModalFor, setShowBudgetModalFor] = useState<PublicKey | null>(null);
@@ -59,7 +61,7 @@ export const AgentCommandCenter = () => {
       await refresh();
     } catch (error) {
       console.error('Failed to toggle agent active state:', error);
-      alert(`Failed to toggle agent: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      addToast(`Failed to toggle agent: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
     } finally {
       setActionLoading(false);
     }
@@ -76,7 +78,7 @@ export const AgentCommandCenter = () => {
       await refresh();
     } catch (error) {
       console.error('Failed to toggle auto-purchase:', error);
-      alert(`Failed to toggle auto-purchase: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      addToast(`Failed to toggle auto-purchase: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
     } finally {
       setActionLoading(false);
     }
@@ -85,7 +87,7 @@ export const AgentCommandCenter = () => {
   const handleAddBudget = async (agentPDA: PublicKey, agentId: string) => {
     const amountSol = parseFloat(budgetAmount);
     if (!amountSol || amountSol <= 0 || isNaN(amountSol)) {
-      alert('Please enter a valid amount');
+      addToast('Please enter a valid amount', 'error');
       return;
     }
 
@@ -98,7 +100,7 @@ export const AgentCommandCenter = () => {
       setShowBudgetModalFor(null);
     } catch (error) {
       console.error('Failed to add budget:', error);
-      alert(`Failed to add budget: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      addToast(`Failed to add budget: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
     } finally {
       setActionLoading(false);
     }

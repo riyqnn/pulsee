@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { NeoCard, NeoInput, NeoButton, NeoToggle } from '../neo';
+import { useToast } from '../../contexts/ToastContext';
 import { useAIAgent } from '../../hooks/useAIAgent';
 import { useAgentsContext } from '../../contexts/AgentsContext';
 
@@ -19,6 +20,7 @@ export interface AgentSettings {
 
 export const AgentSettings = ({ onClose }: AgentSettingsProps) => {
   const { createAgent } = useAIAgent();
+  const { addToast } = useToast();
   const { refresh } = useAgentsContext();
   const [loading, setLoading] = useState(false);
   
@@ -33,7 +35,7 @@ export const AgentSettings = ({ onClose }: AgentSettingsProps) => {
 
   const handleSave = useCallback(async () => {
     if (!settings.agentName) {
-      alert('Please provide an Agent Nickname');
+      addToast('Please provide an Agent Nickname', 'warning');
       return;
     }
 
@@ -61,7 +63,7 @@ export const AgentSettings = ({ onClose }: AgentSettingsProps) => {
       // Refresh global context
       await refresh();
 
-      alert(`Agent "${settings.agentName}" birthed successfully!\n\nID: ${autoAgentId}`);
+      addToast(`Agent "${settings.agentName}" created successfully! ID: ${autoAgentId}`, 'success');
 
       // Reset form
       setSettings({
@@ -75,7 +77,7 @@ export const AgentSettings = ({ onClose }: AgentSettingsProps) => {
       onClose?.();
     } catch (error) {
       console.error('Failed to create agent:', error);
-      alert(`Failed to create agent: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      addToast(`Failed to create agent: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
     } finally {
       setLoading(false);
     }

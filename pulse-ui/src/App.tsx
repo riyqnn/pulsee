@@ -26,7 +26,7 @@ function MainApp() {
   ];
 
   const getTabClass = (isActive: boolean) => `
-    relative px-6 py-3 font-display font-bold text-lg border-4 transition-all
+    relative px-4 sm:px-6 py-2 sm:py-3 font-display font-bold text-base sm:text-lg border-4 transition-all
     ${isActive
       ? 'bg-[#00FF41] border-black shadow-[4px_4px_0px_0px_#000000] -translate-y-1 -translate-x-1'
       : 'bg-white border-black hover:bg-[#F5F5F5]'
@@ -52,7 +52,7 @@ function MainApp() {
               animate={{ opacity: 1, x: 0 }}
               className="flex items-center gap-4"
             >
-              <Link to="/home" className="font-display font-extrabold text-4xl sm:text-5xl tracking-tighter">
+              <Link to="/home" className="font-display font-extrabold text-3xl sm:text-5xl tracking-tighter">
                 PULSE
               </Link>
               <span className="hidden sm:inline-block font-mono text-sm bg-black text-white px-3 py-1 border-2 border-black">
@@ -72,9 +72,9 @@ function MainApp() {
       </header>
 
       {/* Navigation */}
-     <nav className="bg-white border-b-4 border-black sticky top-[76px] z-30 overflow-hidden">
+     <nav className="bg-white border-b-4 border-black sticky top-[76px] sm:top-[84px] z-30 overflow-hidden">
         <div className="max-w-7xl mx-auto">
-          <div className="flex gap-4 py-5 px-6 overflow-x-auto no-scrollbar">
+          <div className="flex flex-wrap justify-center sm:justify-start gap-2 sm:gap-4 py-4 px-4 sm:px-6">
             {tabs.map((tab) => (
               <motion.button
                 key={tab.id}
@@ -86,7 +86,7 @@ function MainApp() {
                 }}
                 whileTap={{ scale: 0.95 }}
               >
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 sm:gap-3">
                   <span className="tracking-tighter uppercase">{tab.label}</span>
                   {tab.count !== undefined && (
                     <span className="font-mono text-[10px] bg-black text-white px-2 py-0.5 border-2 border-black shadow-[2px_2px_0px_0px_#FF00F5]">
@@ -101,7 +101,7 @@ function MainApp() {
       </nav>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 py-6 sm:py-8">
         <AnimatePresence mode="wait">
           <motion.div
             key={activeTab}
@@ -123,7 +123,7 @@ function MainApp() {
       {/* Footer */}
       <footer className="border-t-4 border-black mt-12 py-8 bg-black text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center md:text-left">
             <div>
               <h4 className="font-display font-bold text-xl mb-4">PULSE PROTOCOL</h4>
               <p className="font-mono text-sm" style={{ color: 'var(--color-neo-green)' }}>
@@ -141,7 +141,7 @@ function MainApp() {
               <h4 className="font-display font-bold text-xl mb-4">NETWORK</h4>
               <p className="font-mono text-sm">Solana Devnet</p>
               {connectionStatus && (
-                <div className="flex items-center gap-2 mt-2">
+                <div className="flex items-center justify-center md:justify-start gap-2 mt-2">
                   <span className={`w-2 h-2 rounded-full ${connectionStatus.connected ? 'bg-neo-green' : 'bg-neo-pink'}`} />
                   <span className="font-mono text-xs">{connectionStatus.connected ? 'Connected' : 'Disconnected'}</span>
                 </div>
