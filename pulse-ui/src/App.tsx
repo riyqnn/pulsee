@@ -72,23 +72,28 @@ function MainApp() {
       </header>
 
       {/* Navigation */}
-      <nav className="bg-white border-b-4 border-black sticky top-[76px] z-30">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex gap-2 py-3 overflow-x-auto">
+     <nav className="bg-white border-b-4 border-black sticky top-[76px] z-30 overflow-hidden">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex gap-4 py-5 px-6 overflow-x-auto no-scrollbar">
             {tabs.map((tab) => (
               <motion.button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={getTabClass(activeTab === tab.id)}
-                whileHover={activeTab === tab.id ? {} : { scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
+                whileHover={activeTab === tab.id ? {} : { 
+                  scale: 1.02,
+                  shadow: "4px 4px 0px 0px #000000" 
+                }}
+                whileTap={{ scale: 0.95 }}
               >
-                {tab.label}
-                {tab.count !== undefined && (
-                  <span className="ml-2 font-mono text-sm bg-black text-white px-2 py-0.5 border-2 border-black">
-                    {tab.count}
-                  </span>
-                )}
+                <div className="flex items-center gap-3">
+                  <span className="tracking-tighter uppercase">{tab.label}</span>
+                  {tab.count !== undefined && (
+                    <span className="font-mono text-[10px] bg-black text-white px-2 py-0.5 border-2 border-black shadow-[2px_2px_0px_0px_#FF00F5]">
+                      {tab.count}
+                    </span>
+                  )}
+                </div>
               </motion.button>
             ))}
           </div>
