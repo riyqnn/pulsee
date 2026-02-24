@@ -20,37 +20,16 @@ pub mod pulse {
     pub fn create_event(
         ctx: Context<CreateEvent>,
         event_id: String,
-        name: String,        // Tambah ini
-        description: String, // Tambah ini
-        image_url: String,   // Tambah ini
-        location: String,    // Tambah ini
-        event_start: i64,    // Tambah ini
-        event_end: i64,      // Tambah ini
-        sale_start: i64,     // Tambah ini
-        sale_end: i64,       // Tambah ini
-        max_tickets: u32,    // Tambah ini
         organizer_fee_bps: u16,
     ) -> Result<()> {
         let event = &mut ctx.accounts.event;
-        let clock = Clock::get()?;
-
         event.organizer = ctx.accounts.organizer.key();
         event.event_id = event_id;
-        event.name = name;
-        event.description = description;
-        event.image_url = image_url;
-        event.location = location;
-        event.event_start = event_start;
-        event.event_end = event_end;
-        event.sale_start = sale_start;
-        event.sale_end = sale_end;
-        event.max_tickets_per_user = max_tickets;
         event.organizer_fee_bps = organizer_fee_bps;
-        
+        event.is_active = true;
         event.total_tickets_sold = 0;
         event.total_revenue = 0;
-        event.is_active = true;
-        event.created_at = clock.unix_timestamp;
+        event.created_at = Clock::get()?.unix_timestamp;
         event.bump = ctx.bumps.event;
         Ok(())
     }
@@ -62,29 +41,19 @@ pub mod pulse {
     pub fn create_ticket_tier(
         ctx: Context<CreateTicketTier>,
         tier_id: String,
-        name: String,        
-        description: String, 
         price: u64,
         max_supply: u64,
     ) -> Result<()> {
         let tier = &mut ctx.accounts.tier;
-        let event = &ctx.accounts.event;
-
-        require!(tier_id.len() <= 20, TixError::InvalidInput);
-        require!(price > 0, TixError::InvalidPrice);
-        require!(max_supply > 0, TixError::InvalidSupply);
-        require!(event.is_active, TixError::EventNotActive);
+        require!(ctx.accounts.event.is_active, TixError::EventNotActive);
 
         tier.event = ctx.accounts.event.key();
         tier.tier_id = tier_id;
-        tier.name = name;              
-        tier.description = description;
         tier.price = price;
         tier.max_supply = max_supply;
         tier.current_supply = 0;
         tier.is_active = true;
         tier.bump = ctx.bumps.tier;
-
         Ok(())
     }
 

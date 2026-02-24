@@ -5,6 +5,7 @@ import { useEvents } from '../../hooks/useEvents';
 import { useEffect, useState, useCallback } from 'react';
 import { NeoButton } from '../neo'; 
 import { CreateEventForm } from './CreateEventForm'; 
+import { supabase } from '../../utils/supabase';
 
 export const MarketplaceGrid = () => {
   const { events, loading: contextLoading, refresh } = useEventsContext();
@@ -14,57 +15,65 @@ export const MarketplaceGrid = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
 
   const loadEventsWithTiers = useCallback(async () => {
-    // //TESTING YAAAAA: Jangan pakai getActiveEvents dulu, ambil semua aja buat debugging
-    if (events.length === 0) {
+  setLocalLoading(true);
+  try {
+    console.log("🛠️ Filtering by Supabase metadata...");
+    const { data: metadata, error: sbError } = await supabase
+      .from('events_metadata')
+      .select('*');
+
+    if (sbError) throw sbError;
+    if (!metadata || metadata.length === 0) {
       setEventsWithTiers([]);
       return;
     }
 
-    setLocalLoading(true);
-    try {
-      const eventsData = await Promise.all(
-        events.map(async (event) => {
-          try {
-            const tiers = await getEventTiers(event.publicKey);
-            
-            // //TESTING YAAAAA: Parse data mentah dari BN ke String/Number dengan aman
-            return {
-              id: event.account.eventId,
-              name: event.account.name || `Event ${event.account.eventId}`, 
-              venue: event.account.location || 'Solana Devnet',
-              date: event.account.eventStart 
-                ? new Date(Number(event.account.eventStart.toString()) * 1000).toLocaleDateString() 
-                : 'TBD',
-              image: event.account.imageUrl || `https://api.dicebear.com/7.x/identicon/svg?seed=${event.account.eventId}`,
-              description: event.account.description,
-              // Jika ga ada tiers, jangan dianggap sold out, tapi kasih 0
-              soldOut: tiers.length > 0 && tiers.every((t) => Number(t.account.currentSupply.toString()) >= Number(t.account.maxSupply.toString())),
-              ticketTiers: tiers.map((t) => ({
-                tierId: t.account.tierId,
-                name: t.account.name || t.account.tierId, 
-                price: Number(t.account.price.toString()) / 1e9,
-                available: Math.max(0, Number(t.account.maxSupply.toString()) - Number(t.account.currentSupply.toString())),
-                maxSupply: Number(t.account.maxSupply.toString()),
-              })),
-              publicKey: event.publicKey,
-            };
-          } catch (tierErr) {
-            console.error("Error loading tiers for event:", event.account.eventId, tierErr);
-            return null;
-          }
-        })
-      );
-      
-      // //TESTING YAAAAA: Filter null dan mastikan cuma nampilin yang ada Tiers-nya
-      const validEvents = eventsData.filter(e => e !== null && e.ticketTiers.length > 0);
-      console.log("🚀 Valid Events for UI:", validEvents);
-      setEventsWithTiers(validEvents);
-    } catch (err) {
-      console.error("Critical error in loadEventsWithTiers:", err);
-    } finally {
-      setLocalLoading(false);
+    const eventsData = [];
+    
+    for (const meta of metadata) {
+      try {
+        const solEvent = events.find(e => e.publicKey.toBase58() === meta.event_pda);
+        
+        if (!solEvent) continue;
+
+        const tiers = await getEventTiers(solEvent.publicKey);
+
+        eventsData.push({
+          id: solEvent.account.eventId,
+          publicKey: solEvent.publicKey,
+          name: meta.name,
+          venue: meta.location,
+          description: meta.description,
+          image: meta.image_url,
+          date: meta.event_start ? new Date(meta.event_start).toLocaleDateString() : 'TBD',
+
+          soldOut: tiers.length > 0 && tiers.every((t) => 
+            Number(t.account.currentSupply.toString()) >= Number(t.account.maxSupply.toString())
+          ),
+          ticketTiers: tiers.map((t) => ({
+            tierId: t.account.tierId,
+            name: t.account.name || t.account.tierId, 
+            price: Number(t.account.price.toString()) / 1e9,
+            available: Math.max(0, Number(t.account.maxSupply.toString()) - Number(t.account.currentSupply.toString())),
+            maxSupply: Number(t.account.maxSupply.toString()),
+          })),
+        });
+        
+        await new Promise(r => setTimeout(r, 100)); 
+
+      } catch (err) {
+        console.error(`Gagal muat data blockchain untuk PDA: ${meta.event_pda}`, err);
+      }
     }
-  }, [events, getEventTiers]);
+    
+    console.log("🚀 Marketplace Ready (DB Synced):", eventsData);
+    setEventsWithTiers(eventsData);
+  } catch (err) {
+    console.error("Critical error in loadEventsWithTiers:", err);
+  } finally {
+    setLocalLoading(false);
+  }
+}, [events, getEventTiers]);
 
   useEffect(() => {
     loadEventsWithTiers();
@@ -113,14 +122,14 @@ export const MarketplaceGrid = () => {
       {isLoading ? (
         <div className="text-center py-20">
            <div className="inline-block w-12 h-12 border-8 border-black border-t-[#00FF41] rounded-full animate-spin mb-4"></div>
-           <p className="font-mono text-xl font-black">SYNCING WITH SOLANA...</p>
+           <p className="font-mono text-xl font-black italic">SYNCING HYBRID DATA...</p>
         </div>
       ) : eventsWithTiers.length === 0 ? (
         <div className="text-center py-20 border-8 border-black bg-neutral-100 shadow-[12px_12px_0_0_#000000]">
-          <div className="font-mono text-2xl font-black text-neutral-600">BLOCKCHAIN IS EMPTY</div>
-          <p className="font-mono text-sm text-neutral-500 mt-2 mb-6">Run demo script or create your own event below</p>
+          <div className="font-mono text-2xl font-black text-neutral-600 uppercase">Blockchain Empty</div>
+          <p className="font-mono text-sm text-neutral-500 mt-2 mb-6">No metadata found in Supabase for current on-chain events.</p>
           <NeoButton variant="secondary" onClick={() => setShowCreateModal(true)}>
-            DEPLOY FIRST EVENT
+            DEPLOY FIRST HYBRID EVENT
           </NeoButton>
         </div>
       ) : (
@@ -156,7 +165,7 @@ export const MarketplaceGrid = () => {
               <CreateEventForm 
                 onSuccess={() => {
                    setShowCreateModal(false);
-                   refresh(); 
+                   refresh(); // Paksa Context Solana refresh, yang akan trigger useEffect kita
                 }} 
               />
             </motion.div>

@@ -57,41 +57,21 @@ export const useEvents = (): UseEventsReturn => {
    * Only takes: eventId, organizerFeeBps
    */
   const createEvent = useCallback(
-    async (config: any): Promise<string> => { // Pakai any dulu biar fleksibel atau update type CreateEventInput lo
+    async (config: any): Promise<string> => {
       if (!program || !publicKey) throw new Error('Wallet not connected');
-
       setLoading(true);
-      setError(null);
-
       try {
         const [eventPDA] = await getEventPDA(publicKey, config.eventId, PROGRAM_ID);
 
-        // //TESTING YAAAAA: Sesuaikan urutan argumen dengan SC lib.rs lo
-        const tx = await program.methods
-          .createEvent(
-            config.eventId,
-            config.name,
-            config.description,
-            config.imageUrl,
-            config.location,
-            new BN(config.eventStart),
-            new BN(config.eventEnd),
-            new BN(config.saleStart),
-            new BN(config.saleEnd),
-            config.maxTickets, // u32
-            config.organizerFeeBps // u16
-          )
+        // //FIXED: Hanya kirim 2 argumen sesuai SC Minimalist
+        return await program.methods
+          .createEvent(config.eventId, config.organizerFeeBps)
           .accounts({
             event: eventPDA,
             organizer: publicKey,
             systemProgram: SystemProgram.programId,
           })
           .rpc();
-
-        return tx;
-      } catch (err) {
-        console.error("Hook CreateEvent Error:", err);
-        throw err;
       } finally {
         setLoading(false);
       }
@@ -106,17 +86,14 @@ export const useEvents = (): UseEventsReturn => {
   const createTicketTier = useCallback(
     async (eventPDA: PublicKey, config: any): Promise<string> => {
       if (!program || !publicKey) throw new Error('Wallet not connected');
-
       setLoading(true);
       try {
         const [tierPDA] = await getTierPDA(eventPDA, config.tierId, PROGRAM_ID);
 
-        // //TESTING YAAAAA: Sesuaikan urutan argumen createTicketTier
-        const tx = await program.methods
+        // //FIXED: Hanya kirim 3 argumen (tierId, price, maxSupply)
+        return await program.methods
           .createTicketTier(
             config.tierId,
-            config.name, // Tambahan name
-            config.description, // Tambahan desc
             new BN(config.price.toString()),
             new BN(config.maxSupply.toString())
           )
@@ -127,8 +104,6 @@ export const useEvents = (): UseEventsReturn => {
             systemProgram: SystemProgram.programId,
           })
           .rpc();
-
-        return tx;
       } finally {
         setLoading(false);
       }

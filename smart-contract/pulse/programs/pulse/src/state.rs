@@ -7,16 +7,7 @@ use anchor_lang::prelude::*;
 #[account]
 pub struct Event {
     pub organizer: Pubkey,
-    pub event_id: String,      // max 50
-    pub name: String,          // max 100
-    pub description: String,   // max 200
-    pub image_url: String,     // max 200
-    pub location: String,      // max 100
-    pub event_start: i64,
-    pub event_end: i64,
-    pub sale_start: i64,
-    pub sale_end: i64,
-    pub max_tickets_per_user: u32,
+    pub event_id: String,      // max 32 (slug unik)
     pub organizer_fee_bps: u16,
     pub total_tickets_sold: u64,
     pub total_revenue: u64,
@@ -26,24 +17,7 @@ pub struct Event {
 }
 
 impl Event {
-    pub const SPACE: usize = 8   // discriminator
-        + 32                      // organizer (Pubkey)
-        + (4 + 50)                // event_id string
-        + (4 + 100)               // name string
-        + (4 + 500)               // description string (kasih lebih lebar)
-        + (4 + 200)               // image_url string
-        + (4 + 100)               // location string
-        + 8                       // event_start (i64)
-        + 8                       // event_end (i64)
-        + 8                       // sale_start (i64)
-        + 8                       // sale_end (i64)
-        + 4                       // max_tickets_per_user (u32)
-        + 2                       // organizer_fee_bps (u16)
-        + 8                       // total_tickets_sold (u64)
-        + 8                       // total_revenue (u64)
-        + 1                       // is_active (bool)
-        + 8                       // created_at (i64)
-        + 1;                      // bump
+    pub const SPACE: usize = 8 + 32 + (4 + 32) + 2 + 8 + 8 + 1 + 8 + 1;
 }
 
 /// =====================================

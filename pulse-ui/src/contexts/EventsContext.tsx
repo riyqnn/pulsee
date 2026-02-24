@@ -143,8 +143,11 @@ export const EventsProvider: React.FC<EventsProviderProps> = ({
   /**
    * Get all active events
    */
+  // Ganti fungsi getActiveEvents di EventsContext.tsx lo
   const getActiveEvents = useCallback((): ProgramAccount<Event>[] => {
-    return events.filter((e) => e.account.isActive);
+    // //TESTING YAAAAA: Jangan filter isActive dulu biar data muncul, 
+    // karena kita handle 'active' nya lewat join metadata Supabase nanti
+    return events; 
   }, [events]);
 
   /**

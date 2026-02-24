@@ -35,8 +35,9 @@ export const EventDetailModal = ({ event, onClose }: EventDetailModalProps) => {
 
   // Get the first active agent (simplified - no autoPurchaseEnabled check)
   const activeAgent = agents.find(a => {
-    // Cek property isActive (bisa jadi is_active di beberapa environment)
-    return (a.account as any).isActive === true || (a.account as any).is_active === true;
+    const acc = a.account as any;
+    // Cek dua-duanya (casing Rust vs JS) biar anti-bug
+    return acc.isActive === true || acc.is_active === true;
   });
 
   useEffect(() => {

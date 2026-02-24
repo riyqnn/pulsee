@@ -468,42 +468,6 @@
           "type": "string"
         },
         {
-          "name": "name",
-          "type": "string"
-        },
-        {
-          "name": "description",
-          "type": "string"
-        },
-        {
-          "name": "image_url",
-          "type": "string"
-        },
-        {
-          "name": "location",
-          "type": "string"
-        },
-        {
-          "name": "event_start",
-          "type": "i64"
-        },
-        {
-          "name": "event_end",
-          "type": "i64"
-        },
-        {
-          "name": "sale_start",
-          "type": "i64"
-        },
-        {
-          "name": "sale_end",
-          "type": "i64"
-        },
-        {
-          "name": "max_tickets",
-          "type": "u32"
-        },
-        {
           "name": "organizer_fee_bps",
           "type": "u16"
         }
@@ -568,14 +532,6 @@
       "args": [
         {
           "name": "tier_id",
-          "type": "string"
-        },
-        {
-          "name": "name",
-          "type": "string"
-        },
-        {
-          "name": "description",
           "type": "string"
         },
         {
@@ -1134,42 +1090,6 @@
           {
             "name": "event_id",
             "type": "string"
-          },
-          {
-            "name": "name",
-            "type": "string"
-          },
-          {
-            "name": "description",
-            "type": "string"
-          },
-          {
-            "name": "image_url",
-            "type": "string"
-          },
-          {
-            "name": "location",
-            "type": "string"
-          },
-          {
-            "name": "event_start",
-            "type": "i64"
-          },
-          {
-            "name": "event_end",
-            "type": "i64"
-          },
-          {
-            "name": "sale_start",
-            "type": "i64"
-          },
-          {
-            "name": "sale_end",
-            "type": "i64"
-          },
-          {
-            "name": "max_tickets_per_user",
-            "type": "u32"
           },
           {
             "name": "organizer_fee_bps",

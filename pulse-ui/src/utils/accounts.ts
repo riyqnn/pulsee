@@ -276,36 +276,28 @@ function decodeAccount<T>(program: Program, typeName: string, data: Buffer): T {
 /**
  * Fetch all events for the program
  */
-// Ganti fungsi fetchAllEvents lo jadi gini:
 export async function fetchAllEvents(
   connection: Connection,
   programId: PublicKey,
   program: Program
 ): Promise<ProgramAccount<Event>[]> {
   try {
-    const accounts = await requestQueue.add(() =>
-      connection.getProgramAccounts(programId, {
-        filters: [
-          {
-            memcmp: {
-              offset: 0,
-              bytes: EventDiscriminatorB58,
-            },
-          },
-        ],
-      })
-    );
+    const accounts = await connection.getProgramAccounts(programId, {
+      filters: [{ memcmp: { offset: 0, bytes: EventDiscriminatorB58 } }],
+    });
+
+    console.log(`[fetchAllEvents] Raw accounts found: ${accounts.length}`);
 
     return accounts.map((account) => {
       try {
-        // //TESTING YAAAAA: Pakai coder bawaan program biar ga kena RangeError
-        const decodedData = program.coder.accounts.decode('event', account.account.data) as Event;
+        // Dekode otomatis pake Anchor Coder
+        const decoded = program.coder.accounts.decode('event', account.account.data) as Event;
         return {
           publicKey: account.pubkey,
-          account: decodedData,
+          account: decoded,
         };
       } catch (e) {
-        console.warn("Skipping legacy event account:", account.pubkey.toBase58());
+        console.error("Gagal decode event:", account.pubkey.toBase58());
         return null;
       }
     }).filter(e => e !== null) as ProgramAccount<Event>[];
@@ -338,57 +330,57 @@ export async function fetchEvent(
 /**
  * Parse event account data manually (Simplified MVP version)
  */
-function parseEventAccount(data: Buffer): Event {
-  let offset = 0;
+// function parseEventAccount(data: Buffer): Event {
+//   let offset = 0;
 
-  // organizer: Pubkey (32 bytes)
-  const organizer = new PublicKey(data.subarray(offset, offset + 32));
-  offset += 32;
+//   // organizer: Pubkey (32 bytes)
+//   const organizer = new PublicKey(data.subarray(offset, offset + 32));
+//   offset += 32;
 
-  // event_id: String
-  const eventIdLen = data.readUInt32LE(offset); offset += 4;
-  const eventId = data.subarray(offset, offset + eventIdLen).toString('utf8');
-  offset += eventIdLen;
+//   // event_id: String
+//   const eventIdLen = data.readUInt32LE(offset); offset += 4;
+//   const eventId = data.subarray(offset, offset + eventIdLen).toString('utf8');
+//   offset += eventIdLen;
 
-  // name: String
-  const nameLen = data.readUInt32LE(offset); offset += 4;
-  const name = data.subarray(offset, offset + nameLen).toString('utf8');
-  offset += nameLen;
+//   // name: String
+//   const nameLen = data.readUInt32LE(offset); offset += 4;
+//   const name = data.subarray(offset, offset + nameLen).toString('utf8');
+//   offset += nameLen;
 
-  // description: String
-  const descLen = data.readUInt32LE(offset); offset += 4;
-  const description = data.subarray(offset, offset + descLen).toString('utf8');
-  offset += descLen;
+//   // description: String
+//   const descLen = data.readUInt32LE(offset); offset += 4;
+//   const description = data.subarray(offset, offset + descLen).toString('utf8');
+//   offset += descLen;
 
-  // image_url: String
-  const imgLen = data.readUInt32LE(offset); offset += 4;
-  const imageUrl = data.subarray(offset, offset + imgLen).toString('utf8');
-  offset += imgLen;
+//   // image_url: String
+//   const imgLen = data.readUInt32LE(offset); offset += 4;
+//   const imageUrl = data.subarray(offset, offset + imgLen).toString('utf8');
+//   offset += imgLen;
 
-  // location: String
-  const locLen = data.readUInt32LE(offset); offset += 4;
-  const location = data.subarray(offset, offset + locLen).toString('utf8');
-  offset += locLen;
+//   // location: String
+//   const locLen = data.readUInt32LE(offset); offset += 4;
+//   const location = data.subarray(offset, offset + locLen).toString('utf8');
+//   offset += locLen;
 
-  // Timestamps & Stats
-  const eventStart = new BN(data.subarray(offset, offset + 8), 'le'); offset += 8;
-  const eventEnd = new BN(data.subarray(offset, offset + 8), 'le'); offset += 8;
-  const saleStart = new BN(data.subarray(offset, offset + 8), 'le'); offset += 8;
-  const saleEnd = new BN(data.subarray(offset, offset + 8), 'le'); offset += 8;
-  const maxTicketsPerUser = data.readUInt32LE(offset); offset += 4;
-  const organizerFeeBps = data.readUInt16LE(offset); offset += 2;
-  const totalTicketsSold = new BN(data.subarray(offset, offset + 8), 'le'); offset += 8;
-  const totalRevenue = new BN(data.subarray(offset, offset + 8), 'le'); offset += 8;
-  const isActive = data.readUInt8(offset) !== 0; offset += 1;
-  const createdAt = new BN(data.subarray(offset, offset + 8), 'le'); offset += 8;
-  const bump = data.readUInt8(offset);
+//   // Timestamps & Stats
+//   const eventStart = new BN(data.subarray(offset, offset + 8), 'le'); offset += 8;
+//   const eventEnd = new BN(data.subarray(offset, offset + 8), 'le'); offset += 8;
+//   const saleStart = new BN(data.subarray(offset, offset + 8), 'le'); offset += 8;
+//   const saleEnd = new BN(data.subarray(offset, offset + 8), 'le'); offset += 8;
+//   const maxTicketsPerUser = data.readUInt32LE(offset); offset += 4;
+//   const organizerFeeBps = data.readUInt16LE(offset); offset += 2;
+//   const totalTicketsSold = new BN(data.subarray(offset, offset + 8), 'le'); offset += 8;
+//   const totalRevenue = new BN(data.subarray(offset, offset + 8), 'le'); offset += 8;
+//   const isActive = data.readUInt8(offset) !== 0; offset += 1;
+//   const createdAt = new BN(data.subarray(offset, offset + 8), 'le'); offset += 8;
+//   const bump = data.readUInt8(offset);
 
-  return {
-    organizer, eventId, name, description, imageUrl, location,
-    eventStart, eventEnd, saleStart, saleEnd, maxTicketsPerUser,
-    organizerFeeBps, totalTicketsSold, totalRevenue, isActive, createdAt, bump
-  } as any;
-}
+//   return {
+//     organizer, eventId, name, description, imageUrl, location,
+//     eventStart, eventEnd, saleStart, saleEnd, maxTicketsPerUser,
+//     organizerFeeBps, totalTicketsSold, totalRevenue, isActive, createdAt, bump
+//   } as any;
+// }
 
 /**
  * Fetch all ticket tiers for an event
@@ -399,32 +391,17 @@ export async function fetchTicketTiers(
   programId: PublicKey,
   program: Program
 ): Promise<ProgramAccount<TicketTier>[]> {
-  const accounts = await requestQueue.add(() =>
-    connection.getProgramAccounts(programId, {
-      filters: [
-        {
-          memcmp: {
-            offset: 0,
-            bytes: TicketTierDiscriminatorB58,
-          },
-        },
-        {
-          memcmp: {
-            offset: 8,
-            bytes: eventPDA.toBase58(),
-          },
-        },
-      ],
-    })
-  );
-
-  return accounts.map((account) => {
-    const tier = decodeAccount<TicketTier>(program, 'ticketTier', account.account.data);
-    return {
-      publicKey: account.pubkey,
-      account: tier,
-    };
+  const accounts = await connection.getProgramAccounts(programId, {
+    filters: [
+      { memcmp: { offset: 0, bytes: TicketTierDiscriminatorB58 } },
+      { memcmp: { offset: 8, bytes: eventPDA.toBase58() } },
+    ],
   });
+
+  return accounts.map((account) => ({
+    publicKey: account.pubkey,
+    account: program.coder.accounts.decode('ticketTier', account.account.data) as TicketTier,
+  }));
 }
 
 /**
