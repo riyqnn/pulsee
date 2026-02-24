@@ -6,7 +6,7 @@ pub mod instructions;
 
 use instructions::escrow::*;
 
-declare_id!("5fQA4eCdUtCJPDhjGfb6nn47RhVfKJT2dW5iHuQaeH2n");
+declare_id!("EXZ9u1aF8gvHeUsKM8eTRzWDo88WGMKWZJLbvM8bYetJ");
 
 #[program]
 pub mod pulse {
@@ -171,8 +171,9 @@ pub mod pulse {
     pub fn buy_ticket_with_escrow(
         ctx: Context<BuyTicketWithEscrow>,
         tier_id: String,
+        agent_owner: Pubkey,
     ) -> Result<()> {
-        instructions::escrow::buy_ticket_with_escrow(ctx, tier_id)
+        instructions::escrow::buy_ticket_with_escrow(ctx, tier_id, agent_owner)
     }
 }
 

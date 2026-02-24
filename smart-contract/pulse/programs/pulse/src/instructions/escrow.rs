@@ -84,6 +84,7 @@ pub fn withdraw_from_escrow(ctx: Context<WithdrawFromEscrow>, amount: u64) -> Re
 pub fn buy_ticket_with_escrow(
     ctx: Context<BuyTicketWithEscrow>,
     _tier_id: String,
+    _agent_owner: Pubkey, 
 ) -> Result<()> {
    let escrow_info = ctx.accounts.escrow.to_account_info();
     let organizer_info = ctx.accounts.organizer.to_account_info();
@@ -215,54 +216,41 @@ pub struct WithdrawFromEscrow<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(tier_id: String)]
+#[instruction(tier_id: String, agent_owner: Pubkey)] 
 pub struct BuyTicketWithEscrow<'info> {
     #[account(mut)]
     pub event: Account<'info, Event>,
 
     #[account(
         mut,
-        seeds = [
-            b"tier",
-            event.key().as_ref(),
-            tier_id.as_bytes()
-        ],
+        seeds = [b"tier", event.key().as_ref(), tier_id.as_bytes()],
         bump = tier.bump
     )]
     pub tier: Account<'info, TicketTier>,
 
     #[account(
         mut,
-        seeds = [
-            b"agent",
-            escrow.owner.as_ref(),
-            agent.agent_id.as_bytes()
-        ],
+        // //FIXED: Gunakan agent_owner dari argumen, JANGAN baca dari account lain
+        seeds = [b"agent", agent_owner.as_ref(), agent.agent_id.as_bytes()],
         bump = agent.bump
     )]
     pub agent: Account<'info, AIAgent>,
 
     #[account(
         mut,
-        seeds = [
-            b"escrow",
-            agent.key().as_ref(),
-            agent.owner.as_ref()
-        ],
+        // //FIXED: Escrow pake seeds static juga
+        seeds = [b"escrow", agent.key().as_ref(), agent_owner.as_ref()],
         bump = escrow.bump
     )]
     pub escrow: Account<'info, AgentEscrow>,
 
-    /// CHECK: Organizer wallet
     #[account(
         mut,
-        constraint = organizer.key() == event.organizer
+        constraint = organizer.key() == event.organizer @ TixError::Unauthorized
     )]
+    /// CHECK: Verified against event
     pub organizer: UncheckedAccount<'info>,
 
-    /// CHECK: Authority can be ANYONE - key for autonomous operation!
-    /// Could be a scheduler service, or delegated authority
     pub authority: Signer<'info>,
-
     pub system_program: Program<'info, System>,
 }

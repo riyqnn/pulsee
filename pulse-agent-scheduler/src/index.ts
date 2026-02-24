@@ -24,7 +24,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-const PROGRAM_ID = new PublicKey('5fQA4eCdUtCJPDhjGfb6nn47RhVfKJT2dW5iHuQaeH2n');
+const PROGRAM_ID = new PublicKey('EXZ9u1aF8gvHeUsKM8eTRzWDo88WGMKWZJLbvM8bYetJ');
 const RPC_URL = process.env.RPC_URL || 'https://api.devnet.solana.com';
 const SCHEDULER_KEYPAIR = process.env.SCHEDULER_KEYPAIR;
 
@@ -40,7 +40,11 @@ const TIER_ID = process.env.TIER_ID || 'VIP';
  */
 function getEventPDA(organizer: PublicKey, eventId: string): [PublicKey, number] {
   return PublicKey.findProgramAddressSync(
-    [Buffer.from('event'), organizer.toBuffer(), Buffer.from(eventId)],
+    [
+      Buffer.from('event'), 
+      organizer.toBuffer(), 
+      Buffer.from(eventId) // Ini slug string (misal: "mensrea")
+    ],
     PROGRAM_ID
   );
 }
@@ -52,22 +56,32 @@ function getTierPDA(event: PublicKey, tierId: string): [PublicKey, number] {
 }
 function getAgentPDA(owner: PublicKey, agentId: string): [PublicKey, number] {
   return PublicKey.findProgramAddressSync(
-    [Buffer.from('agent'), owner.toBuffer(), Buffer.from(agentId)],
+    [
+      Buffer.from('agent'), 
+      owner.toBuffer(), 
+      Buffer.from(agentId)
+    ],
     PROGRAM_ID
   );
 }
-function getEscrowPDA(agent: PublicKey, owner: PublicKey): [PublicKey, number] {
+function getEscrowPDA(agentPDA: PublicKey, owner: PublicKey): [PublicKey, number] {
   return PublicKey.findProgramAddressSync(
-    [Buffer.from('escrow'), agent.toBuffer(), owner.toBuffer()],
+    [
+      Buffer.from('escrow'), 
+      agentPDA.toBuffer(), // Pake Alamat PDA Agent
+      owner.toBuffer()     // Pake Alamat Wallet Owner
+    ],
     PROGRAM_ID
   );
 }
 
 /**
- * CORE LOGIC
+ * CORE LOGIC - ANTI-CORRUPTION VERSION
  */
+// pulse-agent-scheduler/src/index.ts
+
 async function buyTicketWithEscrow(
-  program: any, // Pake any biar ga berantem sama TypeScript casing
+  program: any,
   schedulerKeypair: Keypair,
   agentOwner: string,
   agentId: string,
@@ -75,8 +89,6 @@ async function buyTicketWithEscrow(
   eventId: string,
   tierId: string
 ): Promise<string> {
-  console.log(`\n=== Executing Purchase: Agent ${agentId} ===`);
-
   const agentOwnerPubkey = new PublicKey(agentOwner);
   const organizerPubkeyObj = new PublicKey(organizerPubkey);
 
@@ -85,20 +97,11 @@ async function buyTicketWithEscrow(
   const [agentPDA] = getAgentPDA(agentOwnerPubkey, agentId);
   const [escrowPDA] = getEscrowPDA(agentPDA, agentOwnerPubkey);
 
-  // Anchor biasanya ngerubah CamelCase jadi camelCase (aiAgent, ticketTier)
-  // Kita fetch pake cara generic biar aman dari error "Property not exist"
-  const agentAccount = await program.account.aiAgent.fetch(agentPDA);
-  if (!agentAccount.isActive) throw new Error('Agent is inactive');
-  if (!agentAccount.autoPurchaseEnabled) throw new Error('Auto-purchase is disabled');
+  console.log(`🤖 Bot triggering purchase for Agent: ${agentId}`);
 
-  const tierAccount = await program.account.ticketTier.fetch(tierPDA);
-  const price = Number(tierAccount.price);
-  const maxBudget = Number(agentAccount.maxBudgetPerTicket);
-
-  if (price > maxBudget) throw new Error(`Price ${price} exceeds max budget ${maxBudget}`);
-
+  // //FIXED: Kirim agentOwnerPubkey sebagai argumen kedua
   return await program.methods
-    .buyTicketWithEscrow(tierId)
+    .buyTicketWithEscrow(tierId, agentOwnerPubkey) 
     .accounts({
       event: eventPDA,
       tier: tierPDA,
@@ -111,7 +114,6 @@ async function buyTicketWithEscrow(
     .signers([schedulerKeypair])
     .rpc();
 }
-
 /**
  * API Trigger
  */

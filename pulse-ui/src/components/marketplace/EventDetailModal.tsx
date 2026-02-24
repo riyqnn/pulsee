@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PublicKey } from '@solana/web3.js';
 import { usePrimaryMarket } from '../../hooks/usePrimaryMarket';
@@ -34,11 +34,12 @@ export const EventDetailModal = ({ event, onClose }: EventDetailModalProps) => {
   const [selectedTier, setSelectedTier] = useState<string | null>(null);
 
   // Get the first active agent (simplified - no autoPurchaseEnabled check)
-  const activeAgent = agents.find(a => {
-    const acc = a.account as any;
-    // Cek dua-duanya (casing Rust vs JS) biar anti-bug
-    return acc.isActive === true || acc.is_active === true;
-  });
+  const activeAgent = useMemo(() => {
+    return agents.find(a => {
+      const acc = a.account as any;
+      return acc.isActive === true || acc.is_active === true;
+    });
+  }, [agents]);
 
   useEffect(() => {
     document.body.style.overflow = 'hidden';
@@ -53,6 +54,7 @@ export const EventDetailModal = ({ event, onClose }: EventDetailModalProps) => {
 
 
   const handleBuyTicket = async (tierId: string, useAgentForPurchase: boolean = false) => {
+    // 1. Validasi Awal: Wallet User harus Connect buat bayar gas (manual) atau authorize bot (hybrid)
     if (!publicKey) return alert('CONNECT WALLET FIRST');
 
     setLoading(true);
@@ -60,24 +62,35 @@ export const EventDetailModal = ({ event, onClose }: EventDetailModalProps) => {
 
     try {
       if (useAgentForPurchase) {
+        // CASE: BOT JOKI (AGENT) YANG BELIIN
+        
+        // Pengecekan apakah ada agent yang sedang aktif
         if (!activeAgent) {
-          alert('GAK ADA AGENT AKTIF, CU! Bikin dulu atau aktifin di Command Center.');
+          alert('GAK ADA AGENT AKTIF, CU! Aktifin dulu di Command Center.');
           setLoading(false);
           return;
         }
 
         console.log("🤖 Asking Backend Agent to buy...");
         
+        // Ambil Agent ID dengan aman (handle casing Rust/TS)
         const agentId = (activeAgent.account as any).agentId || (activeAgent.account as any).agent_id;
+        
+        /**
+         * PENTING: organizerPubkey harus alamat wallet Organizer (dari Supabase/SC).
+         * Jangan pake event.publicKey karena itu alamat PDA-nya!
+         */
+        const organizerWallet = (event as any).organizer_pubkey || (event as any).organizer;
 
+        // Tembak request ke Backend Scheduler lo
         const response = await fetch('http://localhost:3001/trigger-agent', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             agentOwner: publicKey.toBase58(),
             agentId: agentId,
-            organizerPubkey: event.publicKey.toBase58(), 
-            eventId: event.id,
+            organizerPubkey: organizerWallet, // Alamat Wallet pembuat event
+            eventId: event.id,                // Slug ID (misal: "mensrea")
             tierId: tierId,
           }),
         });
@@ -85,24 +98,29 @@ export const EventDetailModal = ({ event, onClose }: EventDetailModalProps) => {
         const result = await response.json();
         
         if (result.success) {
-          alert(`MISSION SUCCESS! TX: ${result.tx}`);
+          alert(`MISSION SUCCESS! Tiket dibeli Bot. TX: ${result.tx}`);
           onClose();
         } else {
-          throw new Error(result.error || 'Backend error');
+          // Tangkap error detail dari Backend (misal: Insufficient Escrow Balance)
+          throw new Error(result.error || 'Backend failure');
         }
 
       } else {
-        // Manual Buy (Direct)
+        // CASE: BELI MANUAL (DIRECT)
+        
+        // Logic beli manual tetep narik data langsung ke Smart Contract lewat Hook
         await buyTicket({
-          eventPDA: event.publicKey,
+          eventPDA: event.publicKey, // Kalau manual, hook usePrimaryMarket butuh alamat PDA-nya
           tierId: tierId,
         });
+        
         alert('TICKET PURCHASED SUCCESSFULLY');
         onClose();
       }
     } catch (error: any) {
-      console.error('Purchase failed:', error);
-      alert(`FAILED: ${error.message}`);
+      console.error('Purchase process failed:', error);
+      // Parsing error message biar user gak bingung baca object mentah
+      alert(`FAILED: ${error.message || 'Transaction error'}`);
     } finally {
       setLoading(false);
       setSelectedTier(null);
@@ -281,30 +299,29 @@ export const EventDetailModal = ({ event, onClose }: EventDetailModalProps) => {
                           {/* Buy Buttons */}
                           <div className="grid grid-cols-2 gap-3">
                             {/* Manual Buy */}
-                            <motion.button
-                              whileHover={{ scale: isSoldOut ? 1 : 1.02 }}
-                              whileTap={{ scale: isSoldOut ? 1 : 0.98 }}
-                              onClick={() => !isSoldOut && handleBuyTicket(tier.tierId, false)}
-                              disabled={isSoldOut || isBuying || !publicKey}
+                            <motion.button 
+                              onClick={() => handleBuyTicket(tier.tierId, true)}
+                              // HAPUS isSoldOut dari sini cu!
+                              disabled={isBuying || !publicKey || !activeAgent} 
                               className={`py-3 font-black text-sm border-4 border-black transition-all ${
-                                isSoldOut || !publicKey
+                                !publicKey || !activeAgent
                                   ? 'bg-neutral-300 text-neutral-600 cursor-not-allowed'
-                                  : 'bg-[#00FF41] text-black hover:bg-[#FF00F5] hover:text-white'
+                                  : 'bg-[#FF00F5] text-white hover:bg-black hover:border-white'
                               }`}
                             >
                               {isBuying && selectedTier === tier.tierId ? 'PROCESSING...' : isSoldOut ? 'SOLD OUT' : !publicKey ? 'CONNECT' : 'BUY NOW'}
                             </motion.button>
 
                             {/* Agent Buy */}
+
                             <motion.button
-                              whileHover={{ scale: (isSoldOut || !activeAgent) ? 1 : 1.02 }}
-                              whileTap={{ scale: (isSoldOut || !activeAgent) ? 1 : 0.98 }}
-                              onClick={() => !isSoldOut && handleBuyTicket(tier.tierId, true)}
-                              disabled={isSoldOut || isBuying || !publicKey || !activeAgent}
-                              className={`py-3 font-black text-sm border-4 border-black transition-all ${
-                                isSoldOut || !publicKey || !activeAgent
+                              whileHover={{ scale: !activeAgent ? 1 : 1.02 }}
+                              onClick={() => handleBuyTicket(tier.tierId, true)}
+                              disabled={isBuying || !publicKey || !activeAgent} 
+                              className={`py-3 font-black text-sm border-4 border-black transition-all cursor-pointer ${
+                                !publicKey || !activeAgent
                                   ? 'bg-neutral-300 text-neutral-600 cursor-not-allowed'
-                                  : 'bg-[#FF00F5] text-white hover:bg-black hover:border-white'
+                                  : 'bg-[#FF00F5] text-white hover:bg-black hover:border-white shadow-[4px_4px_0_0_#000000]'
                               }`}
                             >
                               {!activeAgent ? 'NO AGENT' : isBuying && selectedTier === tier.tierId ? 'BUYING...' : 'AGENT BUY'}

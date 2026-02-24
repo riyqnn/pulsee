@@ -78,21 +78,24 @@ export const useAIAgent = (): UseAIAgentReturn => {
    */
   // Cari function createAgent di useAIAgent.ts dan ganti logic pemanggilannya:
   const createAgent = useCallback(
-    async (config: CreateAgentInput): Promise<string> => {
+    async (config: any): Promise<string> => {
       if (!program || !publicKey) throw new Error('Wallet not connected');
       setLoading(true);
       try {
+        // 1. Derivasi PDA Agent (seeds: [b"agent", owner, agent_id])
         const [agentPDA] = getAgentPDA(publicKey, config.agentId, PROGRAM_ID);
 
-        const maxBudgetBN = new BN(config.maxBudgetPerTicket.toString());
-        const totalBudgetBN = new BN(config.totalBudget.toString());
-
-        // Pastikan nama method sesuai dengan IDL (biasanya camelCase)
+        // 2. Tembak instruksi sesuai urutan di lib.rs
+        // create_ai_agent(agent_id, name, max_budget, total_budget, auto_purchase, threshold, max_tickets)
         const tx = await program.methods
           .createAiAgent(
-            config.agentId,
-            maxBudgetBN,
-            totalBudgetBN
+            config.agentId,                    // String
+            config.name,                       // String
+            new BN(config.maxBudgetPerTicket), // u64
+            new BN(config.totalBudget),        // u64
+            config.autoPurchaseEnabled,        // bool
+            config.autoPurchaseThreshold,      // u16
+            config.maxTicketsPerEvent          // u32
           )
           .accounts({
             agent: agentPDA,
@@ -428,37 +431,34 @@ export const useAIAgent = (): UseAIAgentReturn => {
    * Fetch all agents for the current user
    */
   const getUserAgents = useCallback(async (): Promise<ProgramAccount<AIAgent>[]> => {
-    if (!connection || !publicKey) {
+    // //FIXED: Pastikan program dikirim ke fetchUserAgents
+    if (!connection || !publicKey || !program) {
       return [];
     }
 
     try {
-      return await fetchUserAgents(connection, publicKey, PROGRAM_ID);
+      return await fetchUserAgents(connection, publicKey, PROGRAM_ID, program);
     } catch (err) {
       const error = err as Error;
       setError(error);
       return [];
     }
-  }, [connection, publicKey]);
+  }, [connection, publicKey, program]);
 
   /**
    * Fetch a single agent by PDA
    */
   const getAgent = useCallback(
     async (agentPDA: PublicKey): Promise<AIAgent | null> => {
-      if (!connection) {
-        return null;
-      }
+      if (!connection || !program) return null;
 
       try {
-        return await fetchAgent(connection, agentPDA);
+        return await fetchAgent(connection, agentPDA, program);
       } catch (err) {
-        const error = err as Error;
-        setError(error);
         return null;
       }
     },
-    [connection]
+    [connection, program]
   );
 
   /**
@@ -466,19 +466,15 @@ export const useAIAgent = (): UseAIAgentReturn => {
    */
   const getEscrow = useCallback(
     async (escrowPDA: PublicKey): Promise<AgentEscrow | null> => {
-      if (!connection) {
-        return null;
-      }
+      if (!connection || !program) return null;
 
       try {
-        return await fetchEscrow(connection, escrowPDA);
+        return await fetchEscrow(connection, escrowPDA, program);
       } catch (err) {
-        const error = err as Error;
-        setError(error);
         return null;
       }
     },
-    [connection]
+    [connection, program]
   );
 
   return {

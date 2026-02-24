@@ -1,5 +1,5 @@
 export const IDL = {
-  "address": "5fQA4eCdUtCJPDhjGfb6nn47RhVfKJT2dW5iHuQaeH2n",
+  "address": "EXZ9u1aF8gvHeUsKM8eTRzWDo88WGMKWZJLbvM8bYetJ",
   "metadata": {
     "name": "pulse",
     "version": "0.1.0",
@@ -176,9 +176,8 @@ export const IDL = {
                 ]
               },
               {
-                "kind": "account",
-                "path": "escrow.owner",
-                "account": "AgentEscrow"
+                "kind": "arg",
+                "path": "agent_owner"
               },
               {
                 "kind": "account",
@@ -209,9 +208,8 @@ export const IDL = {
                 "path": "agent"
               },
               {
-                "kind": "account",
-                "path": "agent.owner",
-                "account": "AIAgent"
+                "kind": "arg",
+                "path": "agent_owner"
               }
             ]
           }
@@ -222,9 +220,6 @@ export const IDL = {
         },
         {
           "name": "authority",
-          "docs": [
-            "Could be a scheduler service, or delegated authority"
-          ],
           "signer": true
         },
         {
@@ -236,6 +231,10 @@ export const IDL = {
         {
           "name": "tier_id",
           "type": "string"
+        },
+        {
+          "name": "agent_owner",
+          "type": "pubkey"
         }
       ]
     },
@@ -468,42 +467,6 @@ export const IDL = {
           "type": "string"
         },
         {
-          "name": "name",
-          "type": "string"
-        },
-        {
-          "name": "description",
-          "type": "string"
-        },
-        {
-          "name": "image_url",
-          "type": "string"
-        },
-        {
-          "name": "location",
-          "type": "string"
-        },
-        {
-          "name": "event_start",
-          "type": "i64"
-        },
-        {
-          "name": "event_end",
-          "type": "i64"
-        },
-        {
-          "name": "sale_start",
-          "type": "i64"
-        },
-        {
-          "name": "sale_end",
-          "type": "i64"
-        },
-        {
-          "name": "max_tickets",
-          "type": "u32"
-        },
-        {
           "name": "organizer_fee_bps",
           "type": "u16"
         }
@@ -568,14 +531,6 @@ export const IDL = {
       "args": [
         {
           "name": "tier_id",
-          "type": "string"
-        },
-        {
-          "name": "name",
-          "type": "string"
-        },
-        {
-          "name": "description",
           "type": "string"
         },
         {
@@ -1136,42 +1091,6 @@ export const IDL = {
             "type": "string"
           },
           {
-            "name": "name",
-            "type": "string"
-          },
-          {
-            "name": "description",
-            "type": "string"
-          },
-          {
-            "name": "image_url",
-            "type": "string"
-          },
-          {
-            "name": "location",
-            "type": "string"
-          },
-          {
-            "name": "event_start",
-            "type": "i64"
-          },
-          {
-            "name": "event_end",
-            "type": "i64"
-          },
-          {
-            "name": "sale_start",
-            "type": "i64"
-          },
-          {
-            "name": "sale_end",
-            "type": "i64"
-          },
-          {
-            "name": "max_tickets_per_user",
-            "type": "u32"
-          },
-          {
             "name": "organizer_fee_bps",
             "type": "u16"
           },
@@ -1214,14 +1133,6 @@ export const IDL = {
           },
           {
             "name": "tier_id",
-            "type": "string"
-          },
-          {
-            "name": "name",
-            "type": "string"
-          },
-          {
-            "name": "description",
             "type": "string"
           },
           {

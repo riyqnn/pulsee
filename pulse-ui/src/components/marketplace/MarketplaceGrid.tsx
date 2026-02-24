@@ -15,44 +15,45 @@ export const MarketplaceGrid = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
 
   const loadEventsWithTiers = useCallback(async () => {
-  setLocalLoading(true);
-  try {
-    console.log("🛠️ Filtering by Supabase metadata...");
-    const { data: metadata, error: sbError } = await supabase
-      .from('events_metadata')
-      .select('*');
+    setLocalLoading(true);
+    try {
+      // 1. Ambil Metadata dari Supabase DULU
+      const { data: metadata, error: sbError } = await supabase
+        .from('events_metadata')
+        .select('*');
 
-    if (sbError) throw sbError;
-    if (!metadata || metadata.length === 0) {
-      setEventsWithTiers([]);
-      return;
-    }
+      if (sbError) throw sbError;
+      if (!metadata) return setEventsWithTiers([]);
 
-    const eventsData = [];
+      const eventsData = [];
     
     for (const meta of metadata) {
-      try {
-        const solEvent = events.find(e => e.publicKey.toBase58() === meta.event_pda);
-        
-        if (!solEvent) continue;
+      const solEvent = events.find(e => e.publicKey.toBase58() === meta.event_pda);
+      if (!solEvent) continue;
 
+      try {
         const tiers = await getEventTiers(solEvent.publicKey);
 
         eventsData.push({
           id: solEvent.account.eventId,
           publicKey: solEvent.publicKey,
+          // FULL DATA DARI SUPABASE
           name: meta.name,
           venue: meta.location,
           description: meta.description,
           image: meta.image_url,
           date: meta.event_start ? new Date(meta.event_start).toLocaleDateString() : 'TBD',
+          
+          // //FIXED: Tambahkan ini agar Agent Buy di Modal tahu siapa Organizernya!
+          organizer_pubkey: meta.organizer_pubkey, 
 
+          // Real-time State dari Solana
           soldOut: tiers.length > 0 && tiers.every((t) => 
             Number(t.account.currentSupply.toString()) >= Number(t.account.maxSupply.toString())
           ),
           ticketTiers: tiers.map((t) => ({
             tierId: t.account.tierId,
-            name: t.account.name || t.account.tierId, 
+            name: t.account.tierId, 
             price: Number(t.account.price.toString()) / 1e9,
             available: Math.max(0, Number(t.account.maxSupply.toString()) - Number(t.account.currentSupply.toString())),
             maxSupply: Number(t.account.maxSupply.toString()),
@@ -60,20 +61,18 @@ export const MarketplaceGrid = () => {
         });
         
         await new Promise(r => setTimeout(r, 100)); 
-
-      } catch (err) {
-        console.error(`Gagal muat data blockchain untuk PDA: ${meta.event_pda}`, err);
+      } catch (e) {
+        console.warn("Skipping tier load for:", meta.event_id);
       }
     }
-    
-    console.log("🚀 Marketplace Ready (DB Synced):", eventsData);
-    setEventsWithTiers(eventsData);
-  } catch (err) {
-    console.error("Critical error in loadEventsWithTiers:", err);
-  } finally {
-    setLocalLoading(false);
-  }
-}, [events, getEventTiers]);
+
+      setEventsWithTiers(eventsData);
+    } catch (err) {
+      console.error("Critical error:", err);
+    } finally {
+      setLocalLoading(false);
+    }
+  }, [events, getEventTiers]);
 
   useEffect(() => {
     loadEventsWithTiers();

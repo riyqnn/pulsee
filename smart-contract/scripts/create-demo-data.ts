@@ -7,7 +7,7 @@ import { getPayer, getConnection } from './utils';
 import * as fs from 'fs';
 import * as path from 'path';
 
-const PROGRAM_ID = new PublicKey('5fQA4eCdUtCJPDhjGfb6nn47RhVfKJT2dW5iHuQaeH2n');
+const PROGRAM_ID = new PublicKey('EXZ9u1aF8gvHeUsKM8eTRzWDo88WGMKWZJLbvM8bYetJ');
 
 async function createDemoData() {
   console.log('🎨 Creating demo data...');

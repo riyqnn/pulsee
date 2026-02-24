@@ -20,7 +20,7 @@ import type {
 
 // ============== Program Constants ==============
 
-export const PROGRAM_ID = new PublicKey('5fQA4eCdUtCJPDhjGfb6nn47RhVfKJT2dW5iHuQaeH2n');
+export const PROGRAM_ID = new PublicKey('EXZ9u1aF8gvHeUsKM8eTRzWDo88WGMKWZJLbvM8bYetJ');
 
 // ============== Request Throttling ==============
 
@@ -282,15 +282,17 @@ export async function fetchAllEvents(
   program: Program
 ): Promise<ProgramAccount<Event>[]> {
   try {
-    const accounts = await connection.getProgramAccounts(programId, {
-      filters: [{ memcmp: { offset: 0, bytes: EventDiscriminatorB58 } }],
-    });
+    // Bungkus pake requestQueue biar antre 500ms tiap request
+    const accounts = await requestQueue.add(() => 
+      connection.getProgramAccounts(programId, {
+        filters: [{ memcmp: { offset: 0, bytes: EventDiscriminatorB58 } }],
+      })
+    );
 
     console.log(`[fetchAllEvents] Raw accounts found: ${accounts.length}`);
 
     return accounts.map((account) => {
       try {
-        // Dekode otomatis pake Anchor Coder
         const decoded = program.coder.accounts.decode('event', account.account.data) as Event;
         return {
           publicKey: account.pubkey,
@@ -328,61 +330,6 @@ export async function fetchEvent(
 }
 
 /**
- * Parse event account data manually (Simplified MVP version)
- */
-// function parseEventAccount(data: Buffer): Event {
-//   let offset = 0;
-
-//   // organizer: Pubkey (32 bytes)
-//   const organizer = new PublicKey(data.subarray(offset, offset + 32));
-//   offset += 32;
-
-//   // event_id: String
-//   const eventIdLen = data.readUInt32LE(offset); offset += 4;
-//   const eventId = data.subarray(offset, offset + eventIdLen).toString('utf8');
-//   offset += eventIdLen;
-
-//   // name: String
-//   const nameLen = data.readUInt32LE(offset); offset += 4;
-//   const name = data.subarray(offset, offset + nameLen).toString('utf8');
-//   offset += nameLen;
-
-//   // description: String
-//   const descLen = data.readUInt32LE(offset); offset += 4;
-//   const description = data.subarray(offset, offset + descLen).toString('utf8');
-//   offset += descLen;
-
-//   // image_url: String
-//   const imgLen = data.readUInt32LE(offset); offset += 4;
-//   const imageUrl = data.subarray(offset, offset + imgLen).toString('utf8');
-//   offset += imgLen;
-
-//   // location: String
-//   const locLen = data.readUInt32LE(offset); offset += 4;
-//   const location = data.subarray(offset, offset + locLen).toString('utf8');
-//   offset += locLen;
-
-//   // Timestamps & Stats
-//   const eventStart = new BN(data.subarray(offset, offset + 8), 'le'); offset += 8;
-//   const eventEnd = new BN(data.subarray(offset, offset + 8), 'le'); offset += 8;
-//   const saleStart = new BN(data.subarray(offset, offset + 8), 'le'); offset += 8;
-//   const saleEnd = new BN(data.subarray(offset, offset + 8), 'le'); offset += 8;
-//   const maxTicketsPerUser = data.readUInt32LE(offset); offset += 4;
-//   const organizerFeeBps = data.readUInt16LE(offset); offset += 2;
-//   const totalTicketsSold = new BN(data.subarray(offset, offset + 8), 'le'); offset += 8;
-//   const totalRevenue = new BN(data.subarray(offset, offset + 8), 'le'); offset += 8;
-//   const isActive = data.readUInt8(offset) !== 0; offset += 1;
-//   const createdAt = new BN(data.subarray(offset, offset + 8), 'le'); offset += 8;
-//   const bump = data.readUInt8(offset);
-
-//   return {
-//     organizer, eventId, name, description, imageUrl, location,
-//     eventStart, eventEnd, saleStart, saleEnd, maxTicketsPerUser,
-//     organizerFeeBps, totalTicketsSold, totalRevenue, isActive, createdAt, bump
-//   } as any;
-// }
-
-/**
  * Fetch all ticket tiers for an event
  */
 export async function fetchTicketTiers(
@@ -391,17 +338,25 @@ export async function fetchTicketTiers(
   programId: PublicKey,
   program: Program
 ): Promise<ProgramAccount<TicketTier>[]> {
-  const accounts = await connection.getProgramAccounts(programId, {
-    filters: [
-      { memcmp: { offset: 0, bytes: TicketTierDiscriminatorB58 } },
-      { memcmp: { offset: 8, bytes: eventPDA.toBase58() } },
-    ],
-  });
+  try {
+    const accounts = await requestQueue.add(() => 
+      connection.getProgramAccounts(programId, {
+        filters: [
+          { memcmp: { offset: 0, bytes: TicketTierDiscriminatorB58 } },
+          { memcmp: { offset: 8, bytes: eventPDA.toBase58() } },
+        ],
+      })
+    );
 
-  return accounts.map((account) => ({
-    publicKey: account.pubkey,
-    account: program.coder.accounts.decode('ticketTier', account.account.data) as TicketTier,
-  }));
+    return accounts.map((account) => ({
+      publicKey: account.pubkey,
+      // //FIXED: Jangan pake parser manual! Biarkan Anchor yang handle.
+      account: program.coder.accounts.decode('ticketTier', account.account.data) as TicketTier,
+    }));
+  } catch (error) {
+    console.error('[fetchTicketTiers] Error:', error);
+    return [];
+  }
 }
 
 /**
@@ -424,119 +379,79 @@ export async function fetchTier(
 export async function fetchUserAgents(
   connection: Connection,
   owner: PublicKey,
-  programId: PublicKey
+  programId: PublicKey,
+  program: Program // Tambahkan parameter program di sini
 ): Promise<ProgramAccount<AIAgent>[]> {
-  // Fetch all agent accounts for this owner using request queue with retry logic
-  const accounts = await requestQueue.add(() =>
-    connection.getProgramAccounts(programId, {
-      filters: [
-        {
-          memcmp: {
-            offset: 0,
-            bytes: AgentDiscriminatorB58,
+  try {
+    // 1. Fetch semua akun yang pake discriminator AIAgent
+    const accounts = await requestQueue.add(() =>
+      connection.getProgramAccounts(programId, {
+        filters: [
+          {
+            memcmp: {
+              offset: 0,
+              bytes: AgentDiscriminatorB58,
+            },
           },
-        },
-      ],
-    })
-  );
+        ],
+      })
+    );
 
-  // Filter by owner and parse manually
-  return accounts
-    .filter((account) => {
-      // Check if owner matches (owner is at bytes 8-39 after 8-byte discriminator)
-      const accountOwner = new PublicKey(account.account.data.subarray(8, 40));
-      return accountOwner.equals(owner);
-    })
-    .map((account) => {
-      // Parse using manual parser
-      const data = account.account.data.subarray(8);
-      const agent = parseAgentAccount(data);
-      return {
-        publicKey: account.pubkey,
-        account: agent,
-      };
-    });
+    // 2. Decode pake Anchor, lalu filter yang owner-nya cocok
+    const userAgents: ProgramAccount<AIAgent>[] = [];
+    
+    for (const account of accounts) {
+      try {
+        const decodedAgent = program.coder.accounts.decode('aiAgent', account.account.data) as AIAgent;
+        
+        // Cek apakah agent ini milik user yang lagi login
+        if (decodedAgent.owner.equals(owner)) {
+          userAgents.push({
+            publicKey: account.pubkey,
+            account: decodedAgent,
+          });
+        }
+      } catch (e) {
+        console.warn("Skipping un-decodable agent account", account.pubkey.toBase58());
+      }
+    }
+
+    return userAgents;
+  } catch (error) {
+    console.error("Error fetching user agents:", error);
+    return [];
+  }
 }
 
 
 /**
  * Parse agent account data manually (Simplified MVP version)
  */
-function parseAgentAccount(data: Buffer): AIAgent {
-  let offset = 0;
+// src/utils/accounts.ts
 
-  // owner: Pubkey (32 bytes)
-  const owner = new PublicKey(data.subarray(offset, offset + 32));
-  offset += 32;
-
-  // agent_id: String (4 bytes length + string)
-  const agentIdLen = data.readUInt32LE(offset);
-  offset += 4;
-  const agentId = data.subarray(offset, offset + agentIdLen).toString('utf8');
-  offset += agentIdLen;
-
-  // is_active: bool (1 byte)
-  const isActive = data.readUInt8(offset) !== 0;
-  offset += 1;
-
-  // auto_purchase_enabled: bool (1 byte)
-  const autoPurchaseEnabled = data.readUInt8(offset) !== 0;
-  offset += 1;
-
-  // auto_purchase_threshold: u16 (2 bytes)
-  const autoPurchaseThreshold = data.readUInt16LE(offset);
-  offset += 2;
-
-  // max_budget_per_ticket: u64 (8 bytes)
-  const maxBudgetPerTicket = BigInt(data.readBigUInt64LE(offset));
-  offset += 8;
-
-  // total_budget: u64
-  const totalBudget = BigInt(data.readBigUInt64LE(offset));
-  offset += 8;
-
-  // spent_budget: u64
-  const spentBudget = BigInt(data.readBigUInt64LE(offset));
-  offset += 8;
-
-  // tickets_purchased: u64
-  const ticketsPurchased = BigInt(data.readBigUInt64LE(offset));
-  offset += 8;
-
-  // created_at: i64
-  const createdAt = BigInt(data.readBigUInt64LE(offset));
-  offset += 8;
-
-  // bump: u8
-  const bump = data.readUInt8(offset);
-
-  return {
-    owner,
-    agentId,
-    isActive,
-    autoPurchaseEnabled,
-    autoPurchaseThreshold,
-    maxBudgetPerTicket,
-    totalBudget,
-    spentBudget,
-    ticketsPurchased,
-    createdAt,
-    bump,
-  } as any as AIAgent;
-}
+// function parseAgentAccount(data: Buffer, program: Program): AIAgent {
+//   // FIXED: Pake decoder Anchor biar aman dari pergeseran byte (Data Alignment)
+//   return program.coder.accounts.decode('aiAgent', data);
+// }
 
 /**
  * Fetch a single AI agent
  */
 export async function fetchAgent(
   connection: Connection,
-  agentPDA: PublicKey
+  agentPDA: PublicKey,
+  program: Program // //FIXED: Tambahin parameter program
 ): Promise<AIAgent | null> {
-  const account = await connection.getAccountInfo(agentPDA);
-  if (!account) return null;
-  // Skip 8-byte discriminator
-  const data = account.data.subarray(8);
-  return parseAgentAccount(data);
+  const accountInfo = await connection.getAccountInfo(agentPDA);
+  if (!accountInfo) return null;
+  
+  try {
+    // Biarkan Anchor yang mikirin offset
+    return program.coder.accounts.decode('aiAgent', accountInfo.data) as AIAgent;
+  } catch (e) {
+    console.error("Decode Agent Gagal:", e);
+    return null;
+  }
 }
 
 /**
@@ -544,68 +459,73 @@ export async function fetchAgent(
  */
 export async function fetchEscrow(
   connection: Connection,
-  escrowPDA: PublicKey
+  escrowPDA: PublicKey,
+  program: Program // //FIXED: Tambahin parameter program
 ): Promise<AgentEscrow | null> {
-  const account = await connection.getAccountInfo(escrowPDA);
-  if (!account) return null;
-  // Skip 8-byte discriminator
-  const data = account.data.subarray(8);
-  return parseEscrowAccount(data);
+  const accountInfo = await connection.getAccountInfo(escrowPDA);
+  if (!accountInfo) return null;
+  
+  try {
+    return program.coder.accounts.decode('agentEscrow', accountInfo.data) as AgentEscrow;
+  } catch (e) {
+    console.error("Decode Escrow Gagal:", e);
+    return null;
+  }
 }
 
 /**
  * Parse escrow account data manually
  */
-function parseEscrowAccount(data: Buffer): AgentEscrow {
-  let offset = 0;
+// function parseEscrowAccount(data: Buffer): AgentEscrow {
+//   let offset = 0;
 
-  // agent: Pubkey (32 bytes)
-  const agent = new PublicKey(data.subarray(offset, offset + 32));
-  offset += 32;
+//   // agent: Pubkey (32 bytes)
+//   const agent = new PublicKey(data.subarray(offset, offset + 32));
+//   offset += 32;
 
-  // owner: Pubkey (32 bytes)
-  const owner = new PublicKey(data.subarray(offset, offset + 32));
-  offset += 32;
+//   // owner: Pubkey (32 bytes)
+//   const owner = new PublicKey(data.subarray(offset, offset + 32));
+//   offset += 32;
 
-  // balance: u64 (8 bytes)
-  const balance = BigInt(data.readBigUInt64LE(offset));
-  offset += 8;
+//   // balance: u64 (8 bytes)
+//   const balance = BigInt(data.readBigUInt64LE(offset));
+//   offset += 8;
 
-  // total_deposited: u64
-  const totalDeposited = BigInt(data.readBigUInt64LE(offset));
-  offset += 8;
+//   // total_deposited: u64
+//   const totalDeposited = BigInt(data.readBigUInt64LE(offset));
+//   offset += 8;
 
-  // total_withdrawn: u64
-  const totalWithdrawn = BigInt(data.readBigUInt64LE(offset));
-  offset += 8;
+//   // total_withdrawn: u64
+//   const totalWithdrawn = BigInt(data.readBigUInt64LE(offset));
+//   offset += 8;
 
-  // total_spent: u64
-  const totalSpent = BigInt(data.readBigUInt64LE(offset));
-  offset += 8;
+//   // total_spent: u64
+//   const totalSpent = BigInt(data.readBigUInt64LE(offset));
+//   offset += 8;
 
-  // created_at: i64
-  const createdAt = BigInt(data.readBigUInt64LE(offset));
-  offset += 8;
+//   // created_at: i64
+//   const createdAt = BigInt(data.readBigUInt64LE(offset));
+//   offset += 8;
 
-  // last_activity: i64
-  const lastActivity = BigInt(data.readBigUInt64LE(offset));
-  offset += 8;
+//   // last_activity: i64
+//   const lastActivity = BigInt(data.readBigUInt64LE(offset));
+//   offset += 8;
 
-  // bump: u8
-  const bump = data.readUInt8(offset);
+//   // bump: u8
+//   const bump = data.readUInt8(offset);
 
-  return {
-    agent,
-    owner,
-    balance,
-    totalDeposited,
-    totalWithdrawn,
-    totalSpent,
-    createdAt,
-    lastActivity,
-    bump,
-  };
-}
+//   return {
+//     agent,
+//     owner,
+//     balance,
+//     totalDeposited,
+//     totalWithdrawn,
+//     totalSpent,
+//     createdAt,
+//     lastActivity,
+//     bump,
+//   };
+// }
 
 // ============== REMOVED IN MVP ==============
 // The following types are removed in simplified MVP - use Supabase for offchain data:

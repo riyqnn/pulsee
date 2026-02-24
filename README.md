@@ -184,7 +184,7 @@ Text: #1F1F1F (Near-black)
 - **Language**: Rust
 - **Framework**: Anchor Framework v0.30.x
 - **Network**: Solana Devnet/Testnet
-- **Program ID**: `5fQA4eCdUtCJPDhjGfb6nn47RhVfKJT2dW5iHuQaeH2n`
+- **Program ID**: `EXZ9u1aF8gvHeUsKM8eTRzWDo88WGMKWZJLbvM8bYetJ`
 
 ### Data Structure
 
@@ -317,7 +317,7 @@ VITE_SOLANA_RPC_URL=https://api.devnet.solana.com
 VITE_SOLANA_WS_URL=wss://api.devnet.solana.com
 
 # Pulse Program Configuration
-VITE_PROGRAM_ID=5fQA4eCdUtCJPDhjGfb6nn47RhVfKJT2dW5iHuQaeH2n
+VITE_PROGRAM_ID=EXZ9u1aF8gvHeUsKM8eTRzWDo88WGMKWZJLbvM8bYetJ
 
 # Environment
 VITE_CLUSTER=devnet

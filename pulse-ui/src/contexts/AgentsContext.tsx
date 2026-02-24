@@ -68,14 +68,18 @@ export const AgentsProvider: React.FC<AgentsProviderProps> = ({
   // Calculate statistics with safe number conversion
   const totalAgents = agents.length;
   const activeAgents = agents.filter((a) => a.account.isActive).length;
-  const totalTicketsPurchased = agents.reduce((sum, a) => {
-    const tickets = Number(a.account.ticketsPurchased || 0);
-    return sum + (isNaN(tickets) ? 0 : tickets);
-  }, 0);
-  const totalBudgetSpent = agents.reduce((sum, a) => {
-    const spent = Number(a.account.spentBudget || 0) / 1e9;
-    return sum + (isNaN(spent) ? 0 : spent);
-  }, 0);
+  
+  const totalTicketsPurchased = useMemo(() => agents.reduce((sum, a) => {
+    // FIXED: Konversi ke String dulu baru ke Number biar ga overflow
+    const tickets = Number(a.account.ticketsPurchased.toString() || '0');
+    return sum + tickets;
+  }, 0), [agents]);
+
+  const totalBudgetSpent = useMemo(() => agents.reduce((sum, a) => {
+    // FIXED: Bagi 1e9 (lamports to SOL) setelah jadi string
+    const spent = Number(a.account.spentBudget.toString() || '0') / 1e9;
+    return sum + spent;
+  }, 0), [agents]);
   // moneySaved removed in simplified MVP
   const totalMoneySaved = 0;
 

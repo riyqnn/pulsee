@@ -1,5 +1,5 @@
 {
-  "address": "5fQA4eCdUtCJPDhjGfb6nn47RhVfKJT2dW5iHuQaeH2n",
+  "address": "EXZ9u1aF8gvHeUsKM8eTRzWDo88WGMKWZJLbvM8bYetJ",
   "metadata": {
     "name": "pulse",
     "version": "0.1.0",
@@ -176,9 +176,8 @@
                 ]
               },
               {
-                "kind": "account",
-                "path": "escrow.owner",
-                "account": "AgentEscrow"
+                "kind": "arg",
+                "path": "agent_owner"
               },
               {
                 "kind": "account",
@@ -209,9 +208,8 @@
                 "path": "agent"
               },
               {
-                "kind": "account",
-                "path": "agent.owner",
-                "account": "AIAgent"
+                "kind": "arg",
+                "path": "agent_owner"
               }
             ]
           }
@@ -222,9 +220,6 @@
         },
         {
           "name": "authority",
-          "docs": [
-            "Could be a scheduler service, or delegated authority"
-          ],
           "signer": true
         },
         {
@@ -236,6 +231,10 @@
         {
           "name": "tier_id",
           "type": "string"
+        },
+        {
+          "name": "agent_owner",
+          "type": "pubkey"
         }
       ]
     },
@@ -1134,14 +1133,6 @@
           },
           {
             "name": "tier_id",
-            "type": "string"
-          },
-          {
-            "name": "name",
-            "type": "string"
-          },
-          {
-            "name": "description",
             "type": "string"
           },
           {

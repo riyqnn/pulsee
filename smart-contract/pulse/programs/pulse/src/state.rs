@@ -7,7 +7,7 @@ use anchor_lang::prelude::*;
 #[account]
 pub struct Event {
     pub organizer: Pubkey,
-    pub event_id: String,      // max 32 (slug unik)
+    pub event_id: String,      
     pub organizer_fee_bps: u16,
     pub total_tickets_sold: u64,
     pub total_revenue: u64,
@@ -17,7 +17,7 @@ pub struct Event {
 }
 
 impl Event {
-    pub const SPACE: usize = 8 + 32 + (4 + 32) + 2 + 8 + 8 + 1 + 8 + 1;
+    pub const SPACE: usize = 8 + 32 + (4 + 32) + 2 + 8 + 8 + 1 + 8 + 1 + 32;
 }
 
 /// =====================================
@@ -28,8 +28,6 @@ impl Event {
 pub struct TicketTier {
     pub event: Pubkey,
     pub tier_id: String,
-    pub name: String,        
-    pub description: String, 
     pub price: u64,
     pub max_supply: u64,
     pub current_supply: u64,
@@ -38,7 +36,7 @@ pub struct TicketTier {
 }
 
 impl TicketTier {
-    pub const SPACE: usize = 8 + 32 + (4 + 20) + (4 + 50) + (4 + 100) + 8 + 8 + 8 + 1 + 1;
+    pub const SPACE: usize = 8 + 32 + (4 + 20) + 8 + 8 + 8 + 1 + 1 + 32;
 }
 
 /// =====================================
@@ -63,7 +61,7 @@ pub struct AIAgent {
 }
 
 impl AIAgent {
-    pub const SPACE: usize = 8 + 32 + (4 + 30) + (4 + 50) + 1 + 1 + 2 + 8 + 8 + 8 + 4 + 8 + 8 + 1;
+    pub const SPACE: usize = 8 + 32 + (4 + 30) + (4 + 50) + 1 + 1 + 2 + 8 + 8 + 8 + 4 + 8 + 8 + 1 + 32;
 }
 
 /// =====================================
@@ -72,26 +70,17 @@ impl AIAgent {
 
 #[account]
 pub struct AgentEscrow {
-    pub agent: Pubkey,              // The AI agent this escrow belongs to
-    pub owner: Pubkey,              // Agent owner (who can withdraw)
-    pub balance: u64,               // Current escrow balance (lamports)
-    pub total_deposited: u64,       // Total lifetime deposits
-    pub total_withdrawn: u64,       // Total lifetime withdrawals
-    pub total_spent: u64,           // Total spent on tickets
+    pub agent: Pubkey,
+    pub owner: Pubkey,
+    pub balance: u64,
+    pub total_deposited: u64,
+    pub total_withdrawn: u64,
+    pub total_spent: u64,
     pub created_at: i64,
     pub last_activity: i64,
     pub bump: u8,
 }
 
 impl AgentEscrow {
-    pub const SPACE: usize = 8   // discriminator
-        + 32                      // agent
-        + 32                      // owner
-        + 8                       // balance
-        + 8                       // total_deposited
-        + 8                       // total_withdrawn
-        + 8                       // total_spent
-        + 8                       // created_at
-        + 8                       // last_activity
-        + 1;                      // bump
+    pub const SPACE: usize = 8 + 32 + 32 + 8 + 8 + 8 + 8 + 8 + 8 + 1 + 32;
 }

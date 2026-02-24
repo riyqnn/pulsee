@@ -132,7 +132,7 @@ npm start
 🤖 PULSE Agent Scheduler Starting...
 Network: https://api.devnet.solana.com
 Scheduler Authority: [SIGNER_PUBKEY]
-Program ID: 5fQA4eCdUtCJPDhjGfb6nn47RhVfKJT2dW5iHuQaeH2n
+Program ID: EXZ9u1aF8gvHeUsKM8eTRzWDo88WGMKWZJLbvM8bYetJ
 
 === Buying Ticket with Agent Escrow ===
 Event PDA: [EVENT_PDA]

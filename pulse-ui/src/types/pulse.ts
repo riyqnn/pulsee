@@ -28,8 +28,6 @@ export interface Event {
 export interface TicketTier {
   event: PublicKey;
   tierId: string;
-  name: string;        // Tambah
-  description: string; // Tambah
   price: BN;
   maxSupply: BN;
   currentSupply: BN;
