@@ -1,16 +1,15 @@
-// Agents Context Provider
-// Provides global AI agents data and operations
-
 import React, { createContext, useContext, useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import type { ReactNode } from 'react';
 import { PublicKey } from '@solana/web3.js';
 import { useAIAgent } from '../hooks/useAIAgent';
 import { useProgram } from '../hooks/useProgram';
 import type { AIAgent, ProgramAccount } from '../types/pulse';
+import { supabase } from '../utils/supabase';
 
 interface AgentsContextValue {
   // Data
   agents: ProgramAccount<AIAgent>[];
+  missions: any[];
   agentMap: Map<string, ProgramAccount<AIAgent>>;
   loading: boolean;
   error: Error | null;
@@ -22,6 +21,7 @@ interface AgentsContextValue {
   totalTicketsPurchased: number;
   totalBudgetSpent: number;
   totalMoneySaved: number;
+  activeMissionsCount: number;
 
   // Operations
   refresh: () => Promise<void>;
@@ -38,24 +38,31 @@ const AgentsContext = createContext<AgentsContextValue | undefined>(undefined);
 
 interface AgentsProviderProps {
   children: ReactNode;
-  autoRefresh?: boolean; // Auto-refresh every 10 seconds
-  refreshInterval?: number; // In milliseconds
+  autoRefresh?: boolean;
+  refreshInterval?: number;
 }
 
-export const AgentsProvider: React.FC<AgentsProviderProps> = ({
+export const AgentsProvider: React.FC<AgentsProviderProps> = ({ 
   children,
   autoRefresh = true,
-  refreshInterval = 10000, // 10 seconds for faster updates
+  refreshInterval = 10000 
 }) => {
   const { getUserAgents } = useAIAgent();
   const { publicKey, connection } = useProgram();
+  
   const [agents, setAgents] = useState<ProgramAccount<AIAgent>[]>([]);
+  const [missions, setMissions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [lastUpdated, setLastUpdated] = useState<number | null>(null);
+  
   const subscriptionIdsRef = useRef<number[]>([]);
 
-  // Convert agents array to a map for easy lookup
+  // ==========================================
+  // 1. CALCULATE DERIVED STATE (MEMOIZED)
+  // ==========================================
+  
+  // Create Map for O(1) lookup
   const agentMap = useMemo(() => {
     const map = new Map<string, ProgramAccount<AIAgent>>();
     agents.forEach((agent) => {
@@ -65,30 +72,32 @@ export const AgentsProvider: React.FC<AgentsProviderProps> = ({
     return map;
   }, [agents]);
 
-  // Calculate statistics with safe number conversion
+  // Statistics Calculation
   const totalAgents = agents.length;
   const activeAgents = agents.filter((a) => a.account.isActive).length;
   
   const totalTicketsPurchased = useMemo(() => agents.reduce((sum, a) => {
-    // FIXED: Konversi ke String dulu baru ke Number biar ga overflow
-    const tickets = Number(a.account.ticketsPurchased.toString() || '0');
-    return sum + tickets;
+    return sum + Number(a.account.ticketsPurchased.toString() || '0');
   }, 0), [agents]);
 
   const totalBudgetSpent = useMemo(() => agents.reduce((sum, a) => {
-    // FIXED: Bagi 1e9 (lamports to SOL) setelah jadi string
-    const spent = Number(a.account.spentBudget.toString() || '0') / 1e9;
-    return sum + spent;
+    return sum + (Number(a.account.spentBudget.toString() || '0') / 1e9);
   }, 0), [agents]);
-  // moneySaved removed in simplified MVP
-  const totalMoneySaved = 0;
 
-  /**
-   * Refresh all agents
-   */
+  const totalMoneySaved = 0; // Standardize for MVP
+
+  const activeMissionsCount = useMemo(() => 
+    missions.filter(m => m.status === 'active').length, 
+  [missions]);
+
+  // ==========================================
+  // 2. OPERATIONS
+  // ==========================================
+
   const refresh = useCallback(async () => {
     if (!publicKey) {
       setAgents([]);
+      setMissions([]);
       setLoading(false);
       return;
     }
@@ -97,97 +106,95 @@ export const AgentsProvider: React.FC<AgentsProviderProps> = ({
     setError(null);
 
     try {
+      // Fetch On-chain Agents
       const fetchedAgents = await getUserAgents();
       setAgents(fetchedAgents);
+
+      // Fetch Off-chain Missions
+      const { data: fetchedMissions, error: supabaseError } = await supabase
+        .from('agent_missions')
+        .select('*')
+        .eq('agent_owner', publicKey.toBase58())
+        .order('created_at', { ascending: false });
+      
+      if (supabaseError) throw supabaseError;
+      setMissions(fetchedMissions || []);
+      
       setLastUpdated(Date.now());
-    } catch (err) {
-      setError(err as Error);
+    } catch (err: any) {
+      console.error("Refresh AgentsContext failed:", err);
+      setError(err);
     } finally {
       setLoading(false);
     }
   }, [publicKey, getUserAgents]);
 
-  /**
-   * Get an agent by its agent ID
-   */
-  const getAgent = useCallback(
-    (agentId: string): ProgramAccount<AIAgent> | undefined => {
-      return agentMap.get(agentId);
-    },
-    [agentMap]
+  const getAgent = useCallback((agentId: string) => agentMap.get(agentId), [agentMap]);
+  
+  const getAgentByPubkey = useCallback((pubkey: PublicKey) => 
+    agentMap.get(pubkey.toBase58()), [agentMap]
   );
 
-  /**
-   * Get an agent by its public key
-   */
-  const getAgentByPubkey = useCallback(
-    (pubkey: PublicKey): ProgramAccount<AIAgent> | undefined => {
-      return agentMap.get(pubkey.toBase58());
-    },
-    [agentMap]
+  const getActiveAgents = useCallback(() => agents.filter((a) => a.account.isActive), [agents]);
+  const getInactiveAgents = useCallback(() => agents.filter((a) => !a.account.isActive), [agents]);
+  const getAgentsByOwner = useCallback((owner: PublicKey) => 
+    agents.filter((a) => a.account.owner.equals(owner)), [agents]
   );
 
-  /**
-   * Get all active agents
-   */
-  const getActiveAgents = useCallback((): ProgramAccount<AIAgent>[] => {
-    return agents.filter((a) => a.account.isActive);
-  }, [agents]);
+  // ==========================================
+  // 3. LISTENERS & SYNC
+  // ==========================================
 
-  /**
-   * Get all inactive agents
-   */
-  const getInactiveAgents = useCallback((): ProgramAccount<AIAgent>[] => {
-    return agents.filter((a) => !a.account.isActive);
-  }, [agents]);
-
-  /**
-   * Get agents by owner
-   */
-  const getAgentsByOwner = useCallback(
-    (owner: PublicKey): ProgramAccount<AIAgent>[] => {
-      return agents.filter((a) => a.account.owner.equals(owner));
-    },
-    [agents]
-  );
-
-  // Initial load
+  // Initial Load
   useEffect(() => {
     refresh();
   }, [refresh]);
 
-  // Auto-refresh
+  // Auto-refresh Interval
   useEffect(() => {
     if (!autoRefresh) return;
-
-    const interval = setInterval(() => {
-      refresh();
-    }, refreshInterval);
-
+    const interval = setInterval(() => refresh(), refreshInterval);
     return () => clearInterval(interval);
   }, [autoRefresh, refreshInterval, refresh]);
 
-  // Real-time monitoring via WebSocket
+  // Real-time Mission Monitoring (Supabase)
+  useEffect(() => {
+    if (!publicKey) return;
+
+    const missionChannel = supabase
+      .channel('mission-updates')
+      .on(
+        'postgres_changes',
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'agent_missions',
+          filter: `agent_owner=eq.${publicKey.toBase58()}` 
+        },
+        () => {
+          console.log("🔔 Mission update detected, syncing...");
+          refresh();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(missionChannel);
+    };
+  }, [publicKey, refresh]);
+
+  // Real-time Account Monitoring (Solana WebSocket)
   useEffect(() => {
     if (!publicKey || !connection) return;
 
     const setupAccountMonitoring = async () => {
       try {
-        // Get all agent accounts
         const agentAccounts = await getUserAgents();
         const agentPubkeys = agentAccounts.map(a => a.publicKey);
 
-        // Subscribe to account changes
         agentPubkeys.forEach(pubkey => {
-          const subscriptionId = connection.onAccountChange(
-            pubkey,
-            (_accountInfo) => {
-              // Refresh all agents when any agent changes
-              refresh();
-            },
-            'confirmed'
-          );
-          subscriptionIdsRef.current.push(subscriptionId);
+          const subId = connection.onAccountChange(pubkey, () => refresh(), 'confirmed');
+          subscriptionIdsRef.current.push(subId);
         });
       } catch (err) {
         console.error('Failed to setup account monitoring:', err);
@@ -196,36 +203,32 @@ export const AgentsProvider: React.FC<AgentsProviderProps> = ({
 
     setupAccountMonitoring();
 
-    // Cleanup subscriptions on unmount or when publicKey changes
     return () => {
-      subscriptionIdsRef.current.forEach(id => {
-        connection.removeAccountChangeListener(id);
-      });
+      subscriptionIdsRef.current.forEach(id => connection.removeAccountChangeListener(id));
       subscriptionIdsRef.current = [];
     };
   }, [publicKey, connection, getUserAgents, refresh]);
 
+  // ==========================================
+  // 4. PROVIDER VALUE
+  // ==========================================
+
   const value: AgentsContextValue = {
-    // Data
     agents,
+    missions,
     agentMap,
     loading,
     error,
     lastUpdated,
-
-    // Statistics
     totalAgents,
     activeAgents,
     totalTicketsPurchased,
     totalBudgetSpent,
     totalMoneySaved,
-
-    // Operations
+    activeMissionsCount,
     refresh,
     getAgent,
     getAgentByPubkey,
-
-    // Filtering
     getActiveAgents,
     getInactiveAgents,
     getAgentsByOwner,
@@ -234,14 +237,10 @@ export const AgentsProvider: React.FC<AgentsProviderProps> = ({
   return <AgentsContext.Provider value={value}>{children}</AgentsContext.Provider>;
 };
 
-// ============== Hook ==============
-
 export const useAgentsContext = (): AgentsContextValue => {
   const context = useContext(AgentsContext);
-
   if (!context) {
     throw new Error('useAgentsContext must be used within an AgentsProvider');
   }
-
   return context;
 };

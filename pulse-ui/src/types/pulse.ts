@@ -2,6 +2,8 @@
  * Simplified Types for PULSE MVP
  * Matches the new simplified smart contract
  */
+import { PublicKey } from '@solana/web3.js';
+import type { BN } from '@coral-xyz/anchor';
 
 // ============== Type Exports ==============
 
@@ -41,8 +43,8 @@ export interface AIAgent {
   isActive: boolean;
   autoPurchaseEnabled: boolean;
   autoPurchaseThreshold: number;
-  maxBudgetPerTicket: bigint;
-  totalBudget: bigint;
+  maxBudgetPerTicket: BN; // Ganti dari bigint
+  totalBudget: BN;
   spentBudget: bigint;
   ticketsPurchased: bigint;
   createdAt: bigint;
@@ -129,8 +131,3 @@ export function isAIAgent(obj: any): obj is AIAgent {
 export function isAgentEscrow(obj: any): obj is AgentEscrow {
   return obj && typeof obj.balance !== 'undefined' && typeof obj.agent !== 'undefined';
 }
-
-import type { BN } from '@coral-xyz/anchor';
-// ============== Type Imports ==============
-
-import { PublicKey } from '@solana/web3.js';

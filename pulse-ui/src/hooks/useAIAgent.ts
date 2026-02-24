@@ -21,6 +21,7 @@ import type {
   ProgramAccount,
 } from '../types/pulse';
 import { PROGRAM_ID } from './useProgram';
+import { supabase } from '../utils/supabase';
 
 interface CreateAgentInput {
   agentId: string;
@@ -50,6 +51,10 @@ interface UseAIAgentReturn {
     eventId: string,
     tierId: string
   ) => Promise<string>;
+
+  // Mission Operations (Sektor 3)
+  getAgentMissions: (ownerAddress: string) => Promise<any[]>;
+  cancelMission: (missionId: string) => Promise<void>;
 
   // Queries
   getUserAgents: () => Promise<ProgramAccount<AIAgent>[]>;
@@ -477,6 +482,26 @@ export const useAIAgent = (): UseAIAgentReturn => {
     [connection, program]
   );
 
+  const getAgentMissions = useCallback(async (ownerAddress: string) => {
+    const { data, error } = await supabase
+      .from('agent_missions')
+      .select('*')
+      .eq('agent_owner', ownerAddress)
+      .order('created_at', { ascending: false });
+    
+    if (error) throw error;
+    return data;
+  }, []);
+
+  const cancelMission = useCallback(async (missionId: string) => {
+    const { error } = await supabase
+      .from('agent_missions')
+      .update({ status: 'cancelled' })
+      .eq('id', missionId);
+    
+    if (error) throw error;
+  }, []);
+
   return {
     // Operations
     createAgent,
@@ -498,6 +523,9 @@ export const useAIAgent = (): UseAIAgentReturn => {
     getUserAgents,
     getAgent,
     getEscrow,
+
+    getAgentMissions, 
+    cancelMission,
 
     // State
     loading,

@@ -6,7 +6,7 @@ pub mod instructions;
 
 use instructions::escrow::*;
 
-use anchor_spl::token::{mint_to, MintTo};
+use anchor_spl::token;
 
 declare_id!("EXZ9u1aF8gvHeUsKM8eTRzWDo88WGMKWZJLbvM8bYetJ");
 
@@ -181,13 +181,12 @@ pub mod pulse {
     /// =====================================
     /// CORE FUNCTION: MINT TICKET NFT
     /// =====================================
-    pub fn mint_ticket_nft(ctx: Context<MintTicketNFT>) -> Result<()> {
+    pub fn mint_ticket_nft(ctx: Context<MintTicketNFT>, name: String, symbol: String, uri: String) -> Result<()> {
         let event = &ctx.accounts.event;
-        
         let organizer_key = event.organizer.key();
         let event_id_bytes = event.event_id.as_bytes();
-        
         let bump_vector = event.bump.to_le_bytes();
+        
         let signer_seeds: &[&[&[u8]]] = &[&[
             b"event",
             organizer_key.as_ref(),
@@ -195,18 +194,52 @@ pub mod pulse {
             &bump_vector,
         ]];
 
-        let cpi_accounts = MintTo {
-            mint: ctx.accounts.ticket_mint.to_account_info(),
-            to: ctx.accounts.buyer_token_account.to_account_info(),
-            authority: ctx.accounts.event.to_account_info(),
-        };
-        
-        let cpi_program = ctx.accounts.token_program.to_account_info();
-        let cpi_ctx = CpiContext::new_with_signer(cpi_program, cpi_accounts, signer_seeds);
-        
-        mint_to(cpi_ctx, 1)?;
+        anchor_spl::token::mint_to(
+            CpiContext::new_with_signer(
+                ctx.accounts.token_program.to_account_info(),
+                anchor_spl::token::MintTo {
+                    mint: ctx.accounts.ticket_mint.to_account_info(),
+                    to: ctx.accounts.buyer_token_account.to_account_info(),
+                    authority: ctx.accounts.event.to_account_info(),
+                },
+                signer_seeds,
+            ),
+            1,
+        )?;
 
-        msg!("True NFT Ticket minted successfully to buyer!");
+        let metadata_infos = anchor_spl::metadata::CreateMetadataAccountsV3 {
+            metadata: ctx.accounts.metadata.to_account_info(),
+            mint: ctx.accounts.ticket_mint.to_account_info(),
+            mint_authority: ctx.accounts.event.to_account_info(),
+            payer: ctx.accounts.authority.to_account_info(),
+            update_authority: ctx.accounts.event.to_account_info(),
+            system_program: ctx.accounts.system_program.to_account_info(),
+            rent: ctx.accounts.rent.to_account_info(),
+        };
+
+        let data_v2 = anchor_spl::metadata::mpl_token_metadata::types::DataV2 {
+            name,
+            symbol,
+            uri,
+            seller_fee_basis_points: 0,
+            creators: None,
+            collection: None,
+            uses: None,
+        };
+
+        anchor_spl::metadata::create_metadata_accounts_v3(
+            CpiContext::new_with_signer(
+                ctx.accounts.token_metadata_program.to_account_info(),
+                metadata_infos,
+                signer_seeds,
+            ),
+            data_v2,
+            true, 
+            true, 
+            None,
+        )?;
+
+        msg!("Verified NFT Minted!");
         Ok(())
     }
 }
@@ -394,6 +427,10 @@ pub struct MintTicketNFT<'info> {
     )]
     pub ticket_mint: Account<'info, anchor_spl::token::Mint>,
 
+    /// CHECK: Metadata account will be created via CPI
+    #[account(mut)]
+    pub metadata: UncheckedAccount<'info>,
+
     #[account(
         init,
         payer = authority,
@@ -410,5 +447,9 @@ pub struct MintTicketNFT<'info> {
 
     pub token_program: Program<'info, anchor_spl::token::Token>,
     pub associated_token_program: Program<'info, anchor_spl::associated_token::AssociatedToken>,
+    
+    /// CHECK: Metaplex program ID
+    pub token_metadata_program: UncheckedAccount<'info>,
     pub system_program: Program<'info, System>,
+    pub rent: Sysvar<'info, Rent>,
 }
