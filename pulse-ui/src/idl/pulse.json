@@ -299,12 +299,28 @@
           "type": "string"
         },
         {
+          "name": "name",
+          "type": "string"
+        },
+        {
           "name": "max_budget_per_ticket",
           "type": "u64"
         },
         {
           "name": "total_budget",
           "type": "u64"
+        },
+        {
+          "name": "auto_purchase_enabled",
+          "type": "bool"
+        },
+        {
+          "name": "auto_purchase_threshold",
+          "type": "u16"
+        },
+        {
+          "name": "max_tickets_per_event",
+          "type": "u32"
         }
       ]
     },
@@ -452,6 +468,42 @@
           "type": "string"
         },
         {
+          "name": "name",
+          "type": "string"
+        },
+        {
+          "name": "description",
+          "type": "string"
+        },
+        {
+          "name": "image_url",
+          "type": "string"
+        },
+        {
+          "name": "location",
+          "type": "string"
+        },
+        {
+          "name": "event_start",
+          "type": "i64"
+        },
+        {
+          "name": "event_end",
+          "type": "i64"
+        },
+        {
+          "name": "sale_start",
+          "type": "i64"
+        },
+        {
+          "name": "sale_end",
+          "type": "i64"
+        },
+        {
+          "name": "max_tickets",
+          "type": "u32"
+        },
+        {
           "name": "organizer_fee_bps",
           "type": "u16"
         }
@@ -516,6 +568,14 @@
       "args": [
         {
           "name": "tier_id",
+          "type": "string"
+        },
+        {
+          "name": "name",
+          "type": "string"
+        },
+        {
+          "name": "description",
           "type": "string"
         },
         {
@@ -962,6 +1022,10 @@
             "type": "string"
           },
           {
+            "name": "name",
+            "type": "string"
+          },
+          {
             "name": "is_active",
             "type": "bool"
           },
@@ -984,6 +1048,10 @@
           {
             "name": "spent_budget",
             "type": "u64"
+          },
+          {
+            "name": "max_tickets_per_event",
+            "type": "u32"
           },
           {
             "name": "tickets_purchased",
@@ -1068,6 +1136,42 @@
             "type": "string"
           },
           {
+            "name": "name",
+            "type": "string"
+          },
+          {
+            "name": "description",
+            "type": "string"
+          },
+          {
+            "name": "image_url",
+            "type": "string"
+          },
+          {
+            "name": "location",
+            "type": "string"
+          },
+          {
+            "name": "event_start",
+            "type": "i64"
+          },
+          {
+            "name": "event_end",
+            "type": "i64"
+          },
+          {
+            "name": "sale_start",
+            "type": "i64"
+          },
+          {
+            "name": "sale_end",
+            "type": "i64"
+          },
+          {
+            "name": "max_tickets_per_user",
+            "type": "u32"
+          },
+          {
             "name": "organizer_fee_bps",
             "type": "u16"
           },
@@ -1110,6 +1214,14 @@
           },
           {
             "name": "tier_id",
+            "type": "string"
+          },
+          {
+            "name": "name",
+            "type": "string"
+          },
+          {
+            "name": "description",
             "type": "string"
           },
           {

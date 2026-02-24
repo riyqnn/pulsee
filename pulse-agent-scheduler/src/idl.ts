@@ -1,87 +1,1249 @@
-// Simplified IDL for the PULSE program (matches the new MVP contract)
 export const IDL = {
-  "version": "0.1.0",
-  "name": "pulse",
+  "address": "5fQA4eCdUtCJPDhjGfb6nn47RhVfKJT2dW5iHuQaeH2n",
+  "metadata": {
+    "name": "pulse",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Created with Anchor"
+  },
   "instructions": [
     {
-      "name": "buyTicketWithEscrow",
+      "name": "activate_agent",
+      "docs": [
+        "=====================================",
+        "AGENT CONTROL INSTRUCTIONS",
+        "====================================="
+      ],
+      "discriminator": [
+        252,
+        139,
+        87,
+        21,
+        195,
+        152,
+        29,
+        217
+      ],
       "accounts": [
-        { "name": "event", "isMut": true, "isSigner": false },
-        { "name": "tier", "isMut": true, "isSigner": false },
-        { "name": "agent", "isMut": true, "isSigner": false },
-        { "name": "escrow", "isMut": true, "isSigner": false },
-        { "name": "organizer", "isMut": true, "isSigner": false },
-        { "name": "authority", "isMut": true, "isSigner": true },
-        { "name": "systemProgram", "isMut": false, "isSigner": false }
+        {
+          "name": "agent",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  103,
+                  101,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "owner"
+              },
+              {
+                "kind": "account",
+                "path": "agent.agent_id",
+                "account": "AIAgent"
+              }
+            ]
+          }
+        },
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "add_agent_budget",
+      "discriminator": [
+        185,
+        104,
+        153,
+        32,
+        53,
+        77,
+        186,
+        55
+      ],
+      "accounts": [
+        {
+          "name": "agent",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  103,
+                  101,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "owner"
+              },
+              {
+                "kind": "account",
+                "path": "agent.agent_id",
+                "account": "AIAgent"
+              }
+            ]
+          }
+        },
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true
+        }
       ],
       "args": [
-        { "name": "tierId", "type": "string" }
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "buy_ticket_with_escrow",
+      "docs": [
+        "=====================================",
+        "CORE FUNCTION: BUY TICKET WITH AGENT ESCROW",
+        "====================================="
+      ],
+      "discriminator": [
+        68,
+        93,
+        104,
+        222,
+        62,
+        228,
+        210,
+        154
+      ],
+      "accounts": [
+        {
+          "name": "event",
+          "writable": true
+        },
+        {
+          "name": "tier",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  105,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "event"
+              },
+              {
+                "kind": "arg",
+                "path": "tier_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "agent",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  103,
+                  101,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "escrow.owner",
+                "account": "AgentEscrow"
+              },
+              {
+                "kind": "account",
+                "path": "agent.agent_id",
+                "account": "AIAgent"
+              }
+            ]
+          }
+        },
+        {
+          "name": "escrow",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "agent"
+              },
+              {
+                "kind": "account",
+                "path": "agent.owner",
+                "account": "AIAgent"
+              }
+            ]
+          }
+        },
+        {
+          "name": "organizer",
+          "writable": true
+        },
+        {
+          "name": "authority",
+          "docs": [
+            "Could be a scheduler service, or delegated authority"
+          ],
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "tier_id",
+          "type": "string"
+        }
+      ]
+    },
+    {
+      "name": "create_ai_agent",
+      "docs": [
+        "=====================================",
+        "AI AGENT INSTRUCTIONS",
+        "====================================="
+      ],
+      "discriminator": [
+        80,
+        103,
+        91,
+        143,
+        24,
+        215,
+        153,
+        201
+      ],
+      "accounts": [
+        {
+          "name": "agent",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  103,
+                  101,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "owner"
+              },
+              {
+                "kind": "arg",
+                "path": "agent_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "agent_id",
+          "type": "string"
+        },
+        {
+          "name": "name",
+          "type": "string"
+        },
+        {
+          "name": "max_budget_per_ticket",
+          "type": "u64"
+        },
+        {
+          "name": "total_budget",
+          "type": "u64"
+        },
+        {
+          "name": "auto_purchase_enabled",
+          "type": "bool"
+        },
+        {
+          "name": "auto_purchase_threshold",
+          "type": "u16"
+        },
+        {
+          "name": "max_tickets_per_event",
+          "type": "u32"
+        }
+      ]
+    },
+    {
+      "name": "create_escrow",
+      "docs": [
+        "=====================================",
+        "ESCROW INSTRUCTIONS",
+        "====================================="
+      ],
+      "discriminator": [
+        253,
+        215,
+        165,
+        116,
+        36,
+        108,
+        68,
+        80
+      ],
+      "accounts": [
+        {
+          "name": "agent",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  103,
+                  101,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "owner"
+              },
+              {
+                "kind": "account",
+                "path": "agent.agent_id",
+                "account": "AIAgent"
+              }
+            ]
+          }
+        },
+        {
+          "name": "escrow",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "agent"
+              },
+              {
+                "kind": "account",
+                "path": "owner"
+              }
+            ]
+          }
+        },
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "create_event",
+      "docs": [
+        "=====================================",
+        "EVENT INSTRUCTIONS",
+        "====================================="
+      ],
+      "discriminator": [
+        49,
+        219,
+        29,
+        203,
+        22,
+        98,
+        100,
+        87
+      ],
+      "accounts": [
+        {
+          "name": "event",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  118,
+                  101,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "organizer"
+              },
+              {
+                "kind": "arg",
+                "path": "event_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "organizer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "event_id",
+          "type": "string"
+        },
+        {
+          "name": "name",
+          "type": "string"
+        },
+        {
+          "name": "description",
+          "type": "string"
+        },
+        {
+          "name": "image_url",
+          "type": "string"
+        },
+        {
+          "name": "location",
+          "type": "string"
+        },
+        {
+          "name": "event_start",
+          "type": "i64"
+        },
+        {
+          "name": "event_end",
+          "type": "i64"
+        },
+        {
+          "name": "sale_start",
+          "type": "i64"
+        },
+        {
+          "name": "sale_end",
+          "type": "i64"
+        },
+        {
+          "name": "max_tickets",
+          "type": "u32"
+        },
+        {
+          "name": "organizer_fee_bps",
+          "type": "u16"
+        }
+      ]
+    },
+    {
+      "name": "create_ticket_tier",
+      "docs": [
+        "=====================================",
+        "TICKET TIER INSTRUCTIONS",
+        "====================================="
+      ],
+      "discriminator": [
+        80,
+        67,
+        79,
+        51,
+        252,
+        196,
+        5,
+        45
+      ],
+      "accounts": [
+        {
+          "name": "event"
+        },
+        {
+          "name": "tier",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  105,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "event"
+              },
+              {
+                "kind": "arg",
+                "path": "tier_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "organizer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "tier_id",
+          "type": "string"
+        },
+        {
+          "name": "name",
+          "type": "string"
+        },
+        {
+          "name": "description",
+          "type": "string"
+        },
+        {
+          "name": "price",
+          "type": "u64"
+        },
+        {
+          "name": "max_supply",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "deactivate_agent",
+      "discriminator": [
+        205,
+        171,
+        239,
+        225,
+        82,
+        126,
+        96,
+        166
+      ],
+      "accounts": [
+        {
+          "name": "agent",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  103,
+                  101,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "owner"
+              },
+              {
+                "kind": "account",
+                "path": "agent.agent_id",
+                "account": "AIAgent"
+              }
+            ]
+          }
+        },
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "deposit_to_escrow",
+      "discriminator": [
+        246,
+        134,
+        57,
+        199,
+        116,
+        101,
+        68,
+        224
+      ],
+      "accounts": [
+        {
+          "name": "escrow",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "agent"
+              },
+              {
+                "kind": "account",
+                "path": "owner"
+              }
+            ]
+          }
+        },
+        {
+          "name": "agent"
+        },
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "toggle_auto_purchase",
+      "discriminator": [
+        162,
+        243,
+        245,
+        180,
+        170,
+        74,
+        223,
+        227
+      ],
+      "accounts": [
+        {
+          "name": "agent",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  103,
+                  101,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "owner"
+              },
+              {
+                "kind": "account",
+                "path": "agent.agent_id",
+                "account": "AIAgent"
+              }
+            ]
+          }
+        },
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "enabled",
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "update_agent_config",
+      "discriminator": [
+        232,
+        239,
+        83,
+        133,
+        24,
+        49,
+        84,
+        76
+      ],
+      "accounts": [
+        {
+          "name": "agent",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  103,
+                  101,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "owner"
+              },
+              {
+                "kind": "account",
+                "path": "agent.agent_id",
+                "account": "AIAgent"
+              }
+            ]
+          }
+        },
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "max_budget_per_ticket",
+          "type": {
+            "option": "u64"
+          }
+        },
+        {
+          "name": "auto_purchase_threshold",
+          "type": {
+            "option": "u16"
+          }
+        }
+      ]
+    },
+    {
+      "name": "withdraw_from_escrow",
+      "discriminator": [
+        235,
+        206,
+        216,
+        253,
+        47,
+        163,
+        169,
+        231
+      ],
+      "accounts": [
+        {
+          "name": "escrow",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "agent"
+              },
+              {
+                "kind": "account",
+                "path": "owner"
+              }
+            ]
+          }
+        },
+        {
+          "name": "agent"
+        },
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
       ]
     }
   ],
   "accounts": [
     {
+      "name": "AIAgent",
+      "discriminator": [
+        235,
+        115,
+        232,
+        223,
+        99,
+        222,
+        244,
+        129
+      ]
+    },
+    {
+      "name": "AgentEscrow",
+      "discriminator": [
+        26,
+        63,
+        32,
+        229,
+        41,
+        3,
+        31,
+        173
+      ]
+    },
+    {
       "name": "Event",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          { "name": "organizer", "type": "publicKey" },
-          { "name": "eventId", "type": "string" },
-          { "name": "organizerFeeBps", "type": "u16" },
-          { "name": "totalTicketsSold", "type": "u64" },
-          { "name": "totalRevenue", "type": "u64" },
-          { "name": "isActive", "type": "bool" },
-          { "name": "createdAt", "type": "i64" },
-          { "name": "bump", "type": "u8" }
-        ]
-      }
+      "discriminator": [
+        125,
+        192,
+        125,
+        158,
+        9,
+        115,
+        152,
+        233
+      ]
     },
     {
       "name": "TicketTier",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          { "name": "event", "type": "publicKey" },
-          { "name": "tierId", "type": "string" },
-          { "name": "price", "type": "u64" },
-          { "name": "maxSupply", "type": "u64" },
-          { "name": "currentSupply", "type": "u64" },
-          { "name": "isActive", "type": "bool" },
-          { "name": "bump", "type": "u8" }
-        ]
-      }
+      "discriminator": [
+        123,
+        241,
+        89,
+        61,
+        59,
+        46,
+        145,
+        242
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "InvalidInput",
+      "msg": "Invalid input"
     },
     {
+      "code": 6001,
+      "name": "InvalidFeeBps",
+      "msg": "Invalid fee basis points - must be 0-10000"
+    },
+    {
+      "code": 6002,
+      "name": "EventNotActive",
+      "msg": "Event is not active"
+    },
+    {
+      "code": 6003,
+      "name": "InvalidPrice",
+      "msg": "Invalid price"
+    },
+    {
+      "code": 6004,
+      "name": "InvalidSupply",
+      "msg": "Invalid supply"
+    },
+    {
+      "code": 6005,
+      "name": "InvalidBudget",
+      "msg": "Invalid budget"
+    },
+    {
+      "code": 6006,
+      "name": "Unauthorized",
+      "msg": "Unauthorized access"
+    },
+    {
+      "code": 6007,
+      "name": "AgentInactive",
+      "msg": "Agent is inactive"
+    },
+    {
+      "code": 6008,
+      "name": "AutoPurchaseDisabled",
+      "msg": "Auto-purchase is not enabled for this agent"
+    },
+    {
+      "code": 6009,
+      "name": "InsufficientAgentBudget",
+      "msg": "Insufficient agent budget"
+    },
+    {
+      "code": 6010,
+      "name": "TierSoldOut",
+      "msg": "Tier is sold out"
+    },
+    {
+      "code": 6011,
+      "name": "TierNotActive",
+      "msg": "Tier is not active"
+    },
+    {
+      "code": 6012,
+      "name": "InsufficientEscrowBalance",
+      "msg": "Insufficient escrow balance"
+    },
+    {
+      "code": 6013,
+      "name": "MathOverflow",
+      "msg": "Math operation overflow"
+    },
+    {
+      "code": 6014,
+      "name": "MathUnderflow",
+      "msg": "Math operation underflow"
+    }
+  ],
+  "types": [
+    {
       "name": "AIAgent",
+      "docs": [
+        "=====================================",
+        "AI AGENT (Simplified)",
+        "====================================="
+      ],
       "type": {
         "kind": "struct",
         "fields": [
-          { "name": "owner", "type": "publicKey" },
-          { "name": "agentId", "type": "string" },
-          { "name": "isActive", "type": "bool" },
-          { "name": "maxBudgetPerTicket", "type": "u64" },
-          { "name": "totalBudget", "type": "u64" },
-          { "name": "spentBudget", "type": "u64" },
-          { "name": "ticketsPurchased", "type": "u64" },
-          { "name": "createdAt", "type": "i64" },
-          { "name": "bump", "type": "u8" }
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "agent_id",
+            "type": "string"
+          },
+          {
+            "name": "name",
+            "type": "string"
+          },
+          {
+            "name": "is_active",
+            "type": "bool"
+          },
+          {
+            "name": "auto_purchase_enabled",
+            "type": "bool"
+          },
+          {
+            "name": "auto_purchase_threshold",
+            "type": "u16"
+          },
+          {
+            "name": "max_budget_per_ticket",
+            "type": "u64"
+          },
+          {
+            "name": "total_budget",
+            "type": "u64"
+          },
+          {
+            "name": "spent_budget",
+            "type": "u64"
+          },
+          {
+            "name": "max_tickets_per_event",
+            "type": "u32"
+          },
+          {
+            "name": "tickets_purchased",
+            "type": "u64"
+          },
+          {
+            "name": "created_at",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
         ]
       }
     },
     {
       "name": "AgentEscrow",
+      "docs": [
+        "=====================================",
+        "AGENT ESCROW",
+        "====================================="
+      ],
       "type": {
         "kind": "struct",
         "fields": [
-          { "name": "agent", "type": "publicKey" },
-          { "name": "owner", "type": "publicKey" },
-          { "name": "balance", "type": "u64" },
-          { "name": "totalDeposited", "type": "u64" },
-          { "name": "totalWithdrawn", "type": "u64" },
-          { "name": "totalSpent", "type": "u64" },
-          { "name": "createdAt", "type": "i64" },
-          { "name": "lastActivity", "type": "i64" },
-          { "name": "bump", "type": "u8" }
+          {
+            "name": "agent",
+            "type": "pubkey"
+          },
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "balance",
+            "type": "u64"
+          },
+          {
+            "name": "total_deposited",
+            "type": "u64"
+          },
+          {
+            "name": "total_withdrawn",
+            "type": "u64"
+          },
+          {
+            "name": "total_spent",
+            "type": "u64"
+          },
+          {
+            "name": "created_at",
+            "type": "i64"
+          },
+          {
+            "name": "last_activity",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Event",
+      "docs": [
+        "=====================================",
+        "EVENT (Minimal - rest offchain in Supabase)",
+        "====================================="
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "organizer",
+            "type": "pubkey"
+          },
+          {
+            "name": "event_id",
+            "type": "string"
+          },
+          {
+            "name": "name",
+            "type": "string"
+          },
+          {
+            "name": "description",
+            "type": "string"
+          },
+          {
+            "name": "image_url",
+            "type": "string"
+          },
+          {
+            "name": "location",
+            "type": "string"
+          },
+          {
+            "name": "event_start",
+            "type": "i64"
+          },
+          {
+            "name": "event_end",
+            "type": "i64"
+          },
+          {
+            "name": "sale_start",
+            "type": "i64"
+          },
+          {
+            "name": "sale_end",
+            "type": "i64"
+          },
+          {
+            "name": "max_tickets_per_user",
+            "type": "u32"
+          },
+          {
+            "name": "organizer_fee_bps",
+            "type": "u16"
+          },
+          {
+            "name": "total_tickets_sold",
+            "type": "u64"
+          },
+          {
+            "name": "total_revenue",
+            "type": "u64"
+          },
+          {
+            "name": "is_active",
+            "type": "bool"
+          },
+          {
+            "name": "created_at",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TicketTier",
+      "docs": [
+        "=====================================",
+        "TICKET TIER",
+        "====================================="
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "event",
+            "type": "pubkey"
+          },
+          {
+            "name": "tier_id",
+            "type": "string"
+          },
+          {
+            "name": "name",
+            "type": "string"
+          },
+          {
+            "name": "description",
+            "type": "string"
+          },
+          {
+            "name": "price",
+            "type": "u64"
+          },
+          {
+            "name": "max_supply",
+            "type": "u64"
+          },
+          {
+            "name": "current_supply",
+            "type": "u64"
+          },
+          {
+            "name": "is_active",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
         ]
       }
     }

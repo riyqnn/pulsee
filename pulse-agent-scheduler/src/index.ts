@@ -9,20 +9,26 @@ import cron from 'node-cron';
 import {
   Program,
   AnchorProvider,
-  web3,
+  Wallet,
   setProvider,
 } from '@coral-xyz/anchor';
-import { IDL } from './idl.js';
 import dotenv from 'dotenv';
+import express from 'express'; 
+import cors from 'cors';     
+// //TESTING YAAAAA: Import langsung dari .ts biar ga pusing masalah .js extension
+import { IDL } from './idl.ts';
 
 dotenv.config();
 
-// Program ID
-const PROGRAM_ID = new PublicKey('5fQA4eCdUtCJPDhjGfb6nn47RhVfKJT2dW5iHuQaeH2n');
+const app = express();
+app.use(cors());
+app.use(express.json());
 
-// Configuration from environment
+const PROGRAM_ID = new PublicKey('5fQA4eCdUtCJPDhjGfb6nn47RhVfKJT2dW5iHuQaeH2n');
 const RPC_URL = process.env.RPC_URL || 'https://api.devnet.solana.com';
 const SCHEDULER_KEYPAIR = process.env.SCHEDULER_KEYPAIR;
+
+// Default values (Testing)
 const AGENT_OWNER = process.env.AGENT_OWNER;
 const AGENT_ID = process.env.AGENT_ID || 'my-agent';
 const EVENT_ORGANIZER = process.env.EVENT_ORGANIZER;
@@ -34,54 +40,34 @@ const TIER_ID = process.env.TIER_ID || 'VIP';
  */
 function getEventPDA(organizer: PublicKey, eventId: string): [PublicKey, number] {
   return PublicKey.findProgramAddressSync(
-    [
-      Buffer.from('event'),
-      organizer.toBuffer(),
-      Buffer.from(eventId),
-    ],
+    [Buffer.from('event'), organizer.toBuffer(), Buffer.from(eventId)],
     PROGRAM_ID
   );
 }
-
 function getTierPDA(event: PublicKey, tierId: string): [PublicKey, number] {
   return PublicKey.findProgramAddressSync(
-    [
-      Buffer.from('tier'),
-      event.toBuffer(),
-      Buffer.from(tierId),
-    ],
+    [Buffer.from('tier'), event.toBuffer(), Buffer.from(tierId)],
     PROGRAM_ID
   );
 }
-
 function getAgentPDA(owner: PublicKey, agentId: string): [PublicKey, number] {
   return PublicKey.findProgramAddressSync(
-    [
-      Buffer.from('agent'),
-      owner.toBuffer(),
-      Buffer.from(agentId),
-    ],
+    [Buffer.from('agent'), owner.toBuffer(), Buffer.from(agentId)],
     PROGRAM_ID
   );
 }
-
 function getEscrowPDA(agent: PublicKey, owner: PublicKey): [PublicKey, number] {
   return PublicKey.findProgramAddressSync(
-    [
-      Buffer.from('escrow'),
-      agent.toBuffer(),
-      owner.toBuffer(),
-    ],
+    [Buffer.from('escrow'), agent.toBuffer(), owner.toBuffer()],
     PROGRAM_ID
   );
 }
 
 /**
- * Buy ticket with agent escrow
- * This is the CORE function - can be called by anyone (scheduler service)
+ * CORE LOGIC
  */
 async function buyTicketWithEscrow(
-  program: Program,
+  program: any, // Pake any biar ga berantem sama TypeScript casing
   schedulerKeypair: Keypair,
   agentOwner: string,
   agentId: string,
@@ -89,56 +75,29 @@ async function buyTicketWithEscrow(
   eventId: string,
   tierId: string
 ): Promise<string> {
-  console.log('\n=== Buying Ticket with Agent Escrow ===');
+  console.log(`\n=== Executing Purchase: Agent ${agentId} ===`);
 
   const agentOwnerPubkey = new PublicKey(agentOwner);
   const organizerPubkeyObj = new PublicKey(organizerPubkey);
 
-  // Derive PDAs
   const [eventPDA] = getEventPDA(organizerPubkeyObj, eventId);
   const [tierPDA] = getTierPDA(eventPDA, tierId);
   const [agentPDA] = getAgentPDA(agentOwnerPubkey, agentId);
   const [escrowPDA] = getEscrowPDA(agentPDA, agentOwnerPubkey);
 
-  console.log('Event PDA:', eventPDA.toBase58());
-  console.log('Tier PDA:', tierPDA.toBase58());
-  console.log('Agent PDA:', agentPDA.toBase58());
-  console.log('Escrow PDA:', escrowPDA.toBase58());
-
-  // Fetch agent account to check status
+  // Anchor biasanya ngerubah CamelCase jadi camelCase (aiAgent, ticketTier)
+  // Kita fetch pake cara generic biar aman dari error "Property not exist"
   const agentAccount = await program.account.aiAgent.fetch(agentPDA);
-  console.log('Agent status:', {
-    isActive: agentAccount.isActive,
-    autoPurchaseEnabled: agentAccount.autoPurchaseEnabled,
-    autoPurchaseThreshold: agentAccount.autoPurchaseThreshold,
-  });
+  if (!agentAccount.isActive) throw new Error('Agent is inactive');
+  if (!agentAccount.autoPurchaseEnabled) throw new Error('Auto-purchase is disabled');
 
-  // Validate agent is active and auto-purchase is enabled
-  if (!agentAccount.isActive) {
-    console.log(`⚠️ Agent ${agentId} is inactive. Skipping purchase.`);
-    throw new Error('Agent is inactive');
-  }
-
-  if (!agentAccount.autoPurchaseEnabled) {
-    console.log(`⚠️ Auto-purchase disabled for agent ${agentId}. Skipping.`);
-    throw new Error('Auto-purchase is disabled');
-  }
-
-  // Fetch tier to validate price against budget
   const tierAccount = await program.account.ticketTier.fetch(tierPDA);
   const price = Number(tierAccount.price);
   const maxBudget = Number(agentAccount.maxBudgetPerTicket);
 
-  console.log(`Price: ${price} lamports, Max Budget: ${maxBudget} lamports`);
+  if (price > maxBudget) throw new Error(`Price ${price} exceeds max budget ${maxBudget}`);
 
-  // Validate price is within budget
-  if (price > maxBudget) {
-    console.log(`⚠️ Price ${price} exceeds max budget ${maxBudget}. Skipping.`);
-    throw new Error('Price exceeds maximum budget');
-  }
-
-  // Build transaction
-  const tx = await program.methods
+  return await program.methods
     .buyTicketWithEscrow(tierId)
     .accounts({
       event: eventPDA,
@@ -146,114 +105,76 @@ async function buyTicketWithEscrow(
       agent: agentPDA,
       escrow: escrowPDA,
       organizer: organizerPubkeyObj,
-      authority: schedulerKeypair.publicKey, // Scheduler yang bayar gas fee
+      authority: schedulerKeypair.publicKey,
       systemProgram: SystemProgram.programId,
     })
     .signers([schedulerKeypair])
     .rpc();
-
-  console.log('✅ Ticket purchased! TX:', tx);
-  return tx;
 }
 
 /**
- * Main execution
+ * API Trigger
+ */
+app.post('/trigger-agent', async (req, res) => {
+  const { agentOwner, agentId, organizerPubkey, eventId, tierId } = req.body;
+  console.log(`🚀 API Request for Agent: ${agentId}`);
+  
+  try {
+    const connection = new Connection(RPC_URL, 'confirmed');
+    const schedulerKeypair = Keypair.fromSecretKey(Buffer.from(SCHEDULER_KEYPAIR!, 'base64'));
+    const wallet = new Wallet(schedulerKeypair); 
+    const provider = new AnchorProvider(connection, wallet, { commitment: 'confirmed' });
+    const program = new Program(IDL as any, provider);
+
+    const tx = await buyTicketWithEscrow(program, schedulerKeypair, agentOwner, agentId, organizerPubkey, eventId, tierId);
+    res.json({ success: true, tx });
+  } catch (error: any) {
+    console.error("❌ API Error:", error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * Main
  */
 async function main() {
-  console.log('🤖 PULSE Agent Scheduler Starting...');
-  console.log('Network:', RPC_URL);
+  console.log('🤖 PULSE Agent Scheduler System Starting...');
+  if (!SCHEDULER_KEYPAIR) throw new Error('SCHEDULER_KEYPAIR not set in .env');
 
-  // Validate environment
-  if (!SCHEDULER_KEYPAIR) {
-    throw new Error('SCHEDULER_KEYPAIR not set in .env');
-  }
-  if (!AGENT_OWNER) {
-    throw new Error('AGENT_OWNER not set in .env');
-  }
-  if (!EVENT_ORGANIZER) {
-    throw new Error('EVENT_ORGANIZER not set in .env');
-  }
-
-  // Setup connection
   const connection = new Connection(RPC_URL, 'confirmed');
-
-  // Load scheduler keypair
-  const schedulerKeypair = Keypair.fromSecretKey(
-    Buffer.from(SCHEDULER_KEYPAIR, 'base64')
-  );
-  console.log('Scheduler Authority:', schedulerKeypair.publicKey.toBase58());
-
-  // Setup Anchor provider
-  const provider = new AnchorProvider(
-    connection,
-    {
-      publicKey: schedulerKeypair.publicKey,
-      signTransaction: async (tx: Transaction) => {
-        tx.sign(schedulerKeypair);
-        return tx;
-      },
-      signAllTransactions: async (txs: Transaction[]) => {
-        txs.forEach(tx => tx.sign(schedulerKeypair));
-        return txs;
-      },
-    },
-    { commitment: 'confirmed' }
-  );
-
+  const schedulerKeypair = Keypair.fromSecretKey(Buffer.from(SCHEDULER_KEYPAIR, 'base64'));
+  const wallet = new Wallet(schedulerKeypair);
+  const provider = new AnchorProvider(connection, wallet, { commitment: 'confirmed' });
   setProvider(provider);
 
-  // Load program
-  const program = new Program(IDL, PROGRAM_ID, provider);
-  console.log('Program ID:', program.programId.toBase58());
+  const program = new Program(IDL as any, provider);
 
-  // Execute once on startup for testing
-  try {
-    const tx = await buyTicketWithEscrow(
-      program,
-      schedulerKeypair,
-      AGENT_OWNER,
-      AGENT_ID,
-      EVENT_ORGANIZER,
-      EVENT_ID,
-      TIER_ID
-    );
+  const PORT = process.env.PORT || 3001;
+  app.listen(PORT, () => {
+    console.log(`📡 PULSE API Listener running on port ${PORT}`);
+  });
 
-    console.log('\n✨ Success! Transaction signature:', tx);
-    console.log('View on Solana Explorer:', `https://solscan.io/tx/${tx}?cluster=devnet`);
-  } catch (error) {
-    console.error('❌ Error:', error);
+  // Startup Test (Optional)
+  if (AGENT_OWNER && EVENT_ORGANIZER) {
+    try {
+      console.log("🧪 Running startup check...");
+      await buyTicketWithEscrow(program, schedulerKeypair, AGENT_OWNER, AGENT_ID, EVENT_ORGANIZER, EVENT_ID, TIER_ID);
+    } catch (e) {
+      console.log('⚠️ Startup check skipped.');
+    }
   }
 
-  // Setup cron scheduling - run every 5 minutes
   cron.schedule('*/5 * * * *', async () => {
-    console.log('\n⏰ Scheduled task triggered at:', new Date().toISOString());
-    try {
-      const tx = await buyTicketWithEscrow(
-        program,
-        schedulerKeypair,
-        AGENT_OWNER,
-        AGENT_ID,
-        EVENT_ORGANIZER,
-        EVENT_ID,
-        TIER_ID
-      );
-
-      console.log('✨ Scheduled purchase successful! TX:', tx);
-      console.log('View on Solana Explorer:', `https://solscan.io/tx/${tx}?cluster=devnet`);
-    } catch (error) {
-      console.error('❌ Scheduled purchase failed:', error);
+    if (AGENT_OWNER && EVENT_ORGANIZER) {
+      try {
+        await buyTicketWithEscrow(program, schedulerKeypair, AGENT_OWNER, AGENT_ID, EVENT_ORGANIZER, EVENT_ID, TIER_ID);
+      } catch (error: any) {
+        console.error('❌ Cron failed:', error.message);
+      }
     }
   });
 
-  console.log('\n⏰ Scheduler configured to run every 5 minutes');
-  console.log('Press Ctrl+C to stop the scheduler');
-
-  // Keep the process running
-  process.on('SIGINT', () => {
-    console.log('\n👋 Shutting down scheduler...');
-    process.exit(0);
-  });
+  console.log('🚀 System Fully Operational.');
 }
 
-// Run
 main().catch(console.error);

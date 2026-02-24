@@ -57,10 +57,8 @@ export const useEvents = (): UseEventsReturn => {
    * Only takes: eventId, organizerFeeBps
    */
   const createEvent = useCallback(
-    async (config: CreateEventInput): Promise<string> => {
-      if (!program || !publicKey) {
-        throw new Error('Wallet not connected');
-      }
+    async (config: any): Promise<string> => { // Pakai any dulu biar fleksibel atau update type CreateEventInput lo
+      if (!program || !publicKey) throw new Error('Wallet not connected');
 
       setLoading(true);
       setError(null);
@@ -68,10 +66,20 @@ export const useEvents = (): UseEventsReturn => {
       try {
         const [eventPDA] = await getEventPDA(publicKey, config.eventId, PROGRAM_ID);
 
+        // //TESTING YAAAAA: Sesuaikan urutan argumen dengan SC lib.rs lo
         const tx = await program.methods
           .createEvent(
             config.eventId,
-            config.organizerFeeBps
+            config.name,
+            config.description,
+            config.imageUrl,
+            config.location,
+            new BN(config.eventStart),
+            new BN(config.eventEnd),
+            new BN(config.saleStart),
+            new BN(config.saleEnd),
+            config.maxTickets, // u32
+            config.organizerFeeBps // u16
           )
           .accounts({
             event: eventPDA,
@@ -82,9 +90,8 @@ export const useEvents = (): UseEventsReturn => {
 
         return tx;
       } catch (err) {
-        const error = err as Error;
-        setError(error);
-        throw error;
+        console.error("Hook CreateEvent Error:", err);
+        throw err;
       } finally {
         setLoading(false);
       }
@@ -97,29 +104,21 @@ export const useEvents = (): UseEventsReturn => {
    * Only takes: tierId, price, maxSupply
    */
   const createTicketTier = useCallback(
-    async (eventPDA: PublicKey, config: CreateTicketTierInput): Promise<string> => {
-      if (!program || !publicKey) {
-        throw new Error('Wallet not connected');
-      }
+    async (eventPDA: PublicKey, config: any): Promise<string> => {
+      if (!program || !publicKey) throw new Error('Wallet not connected');
 
       setLoading(true);
-      setError(null);
-
       try {
         const [tierPDA] = await getTierPDA(eventPDA, config.tierId, PROGRAM_ID);
 
-        const priceBN = typeof config.price === 'bigint'
-          ? new BN(config.price.toString())
-          : new BN(config.price);
-        const maxSupplyBN = typeof config.maxSupply === 'bigint'
-          ? new BN(config.maxSupply.toString())
-          : new BN(config.maxSupply);
-
+        // //TESTING YAAAAA: Sesuaikan urutan argumen createTicketTier
         const tx = await program.methods
           .createTicketTier(
             config.tierId,
-            priceBN,
-            maxSupplyBN
+            config.name, // Tambahan name
+            config.description, // Tambahan desc
+            new BN(config.price.toString()),
+            new BN(config.maxSupply.toString())
           )
           .accounts({
             event: eventPDA,
@@ -130,10 +129,6 @@ export const useEvents = (): UseEventsReturn => {
           .rpc();
 
         return tx;
-      } catch (err) {
-        const error = err as Error;
-        setError(error);
-        throw error;
       } finally {
         setLoading(false);
       }
@@ -167,22 +162,18 @@ export const useEvents = (): UseEventsReturn => {
   /**
    * Fetch a single event
    */
-  const getEvent = useCallback(
-    async (eventPDA: PublicKey): Promise<Event | null> => {
-      if (!connection) {
-        return null;
-      }
-
-      try {
-        return await fetchEvent(connection, eventPDA);
-      } catch (err) {
-        const error = err as Error;
-        setError(error);
-        return null;
-      }
-    },
-    [connection]
-  );
+  // Di useEvents.ts bagian getEvent
+const getEvent = useCallback(
+  async (eventPDA: PublicKey): Promise<Event | null> => {
+    if (!connection || !program) return null;
+    try {
+      return await fetchEvent(connection, eventPDA, program); // Kirim program di sini
+    } catch (err) {
+      return null;
+    }
+  },
+  [connection, program]
+);
 
   /**
    * Fetch all ticket tiers for an event

@@ -15,7 +15,13 @@ const LandingPage = () => {
   const { connected } = useWallet();
 
   return (
-    <div className="bg-neo-gray font-display text-neo-black overflow-x-hidden">
+    <div
+      className="bg-[#FFFDFA] font-display text-neo-black overflow-x-hidden"
+      style={{
+        backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(0,0,0,0.15) 1px, transparent 0)',
+        backgroundSize: '20px 20px',
+      }}
+    >
       {/* Grain Overlay */}
       <div className="fixed inset-0 pointer-events-none opacity-[0.04] z-50 bg-grain" />
 

@@ -62,30 +62,31 @@ export const EventsProvider: React.FC<EventsProviderProps> = ({
    * Refresh all events and their tiers
    */
   const refresh = useCallback(async () => {
-    setLoading(true);
+    // Kita nggak set loading true di sini biar ga flickering pas auto-refresh
     setError(null);
 
     try {
       const fetchedEvents = await getAllEvents();
-      setEvents(fetchedEvents);
+      console.log("[EventsContext] Fetched Events:", fetchedEvents.length);
 
-      // Fetch tiers for each event
       const tiersMap = new Map<string, ProgramAccount<TicketTier>[]>();
-      for (const event of fetchedEvents) {
+      
+      // Load tiers secara pararel biar cepet
+      await Promise.all(fetchedEvents.map(async (event) => {
         try {
           const tiers = await fetchEventTiers(event.publicKey);
           tiersMap.set(event.publicKey.toBase58(), tiers);
         } catch (err) {
-          console.error(`[EventsContext] Error fetching tiers for event ${event.publicKey.toBase58()}:`, err);
+          console.error(`Error tiers for ${event.account.eventId}:`, err);
         }
-      }
-      setEventTiers(tiersMap);
+      }));
 
+      setEvents(fetchedEvents);
+      setEventTiers(tiersMap);
       setLastUpdated(Date.now());
+      setLoading(false); // Selesaikan loading awal
     } catch (err) {
-      console.error('[EventsContext] Error fetching events:', err);
       setError(err as Error);
-    } finally {
       setLoading(false);
     }
   }, [getAllEvents, fetchEventTiers]);

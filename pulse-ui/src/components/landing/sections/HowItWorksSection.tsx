@@ -2,25 +2,52 @@ export const HowItWorksSection = () => {
   return (
     <section className="py-20 sm:py-24">
       <div className="container mx-auto px-6">
-        <h2 className="text-4xl md:text-5xl font-extrabold tracking-tighter text-center mb-16">
-          Three Steps to Glory
+        <h2 className="text-4xl md:text-5xl font-extrabold tracking-tighter text-center mb-4">
+          From Zero to Automated
         </h2>
-        <div className="relative grid md:grid-cols-3 gap-8 font-mono">
-          <div className="absolute top-1/2 left-0 w-full h-1 bg-black hidden md:block" />
-          <div className="relative bg-white border-4 border-black p-8 shadow-neo z-10">
-            <div className="absolute -top-6 -left-4 bg-neo-green text-black w-12 h-12 flex items-center justify-center font-bold text-2xl border-4 border-black">1</div>
-            <h3 className="text-xl font-bold mb-2 mt-4">Connect Wallet</h3>
-            <p>Link your Solana wallet to get started in seconds.</p>
+        <p className="text-xl text-center max-w-2xl mx-auto mb-20 text-gray-700">
+          Getting started is simple. Follow these three steps to deploy your first
+          agent and gain an immediate edge.
+        </p>
+        <div className="flex flex-col md:flex-row justify-center items-center gap-8 md:gap-16 font-mono">
+          {/* Step 1 */}
+          <div className="flex items-center flex-col text-center">
+            <div className="bg-neo-green text-black w-20 h-20 flex items-center justify-center font-bold text-4xl border-4 border-black -rotate-6">
+              1
+            </div>
+            <h3 className="text-xl font-bold my-4">Connect & Fund</h3>
+            <p className="max-w-xs">
+              Link your Solana wallet and deposit USDC into your personal, secure
+              escrow account.
+            </p>
           </div>
-          <div className="relative bg-white border-4 border-black p-8 shadow-neo z-10">
-            <div className="absolute -top-6 -left-4 bg-neo-pink text-white w-12 h-12 flex items-center justify-center font-bold text-2xl border-4 border-black">2</div>
-            <h3 className="text-xl font-bold mb-2 mt-4">Fund Your Agent</h3>
-            <p>Deposit USDC into a secure escrow to fund your AI agent.</p>
+
+          <div className="w-16 h-1 bg-black rotate-90 md:rotate-0" />
+
+          {/* Step 2 */}
+          <div className="flex items-center flex-col text-center">
+            <div className="bg-neo-pink text-white w-20 h-20 flex items-center justify-center font-bold text-4xl border-4 border-black rotate-3">
+              2
+            </div>
+            <h3 className="text-xl font-bold my-4">Configure Agent</h3>
+            <p className="max-w-xs">
+              Choose your target event and set your parameters, like the maximum
+              price you're willing to pay.
+            </p>
           </div>
-          <div className="relative bg-white border-4 border-black p-8 shadow-neo z-10">
-            <div className="absolute -top-6 -left-4 bg-neo-black text-white w-12 h-12 flex items-center justify-center font-bold text-2xl border-4 border-black">3</div>
-            <h3 className="text-xl font-bold mb-2 mt-4">Deploy & Relax</h3>
-            <p>Set your target, deploy your agent, and let it do the work.</p>
+
+          <div className="w-16 h-1 bg-black rotate-90 md:rotate-0" />
+
+          {/* Step 3 */}
+          <div className="flex items-center flex-col text-center">
+            <div className="bg-black text-white w-20 h-20 flex items-center justify-center font-bold text-4xl border-4 border-black -rotate-2">
+              3
+            </div>
+            <h3 className="text-xl font-bold my-4">Deploy & Win</h3>
+            <p className="max-w-xs">
+              Unleash your agent. It will monitor the sale and execute the
+              purchase the moment it begins.
+            </p>
           </div>
         </div>
       </div>

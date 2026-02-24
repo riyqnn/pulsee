@@ -20,7 +20,7 @@ async function createDemoData() {
   console.log('👤 Organizer:', payer.publicKey.toString());
 
   // Load IDL
-  const idlPath = path.join(__dirname, '..', 'target', 'idl', 'pulse.json');
+  const idlPath = path.join(__dirname, '..', 'pulse', 'target', 'idl', 'pulse.json');
   if (!fs.existsSync(idlPath)) {
     throw new Error(`IDL not found at ${idlPath}. Please build the contract first: anchor build`);
   }
@@ -72,7 +72,7 @@ async function createDemoData() {
       .createEvent(
         eventId1,
         'Neon Music Festival 2025',
-        'Electronic music festival featuring top DJs from around the world',
+        'Electronic music festival featuring top DJs',
         'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=800',
         'Cyber Arena, Tokyo',
         new BN(eventStart1),
@@ -80,7 +80,7 @@ async function createDemoData() {
         new BN(saleStart1),
         new BN(saleEnd1),
         5, // max_tickets_per_user
-        500 // royalty_bps: 5%
+        500 // organizer_fee_bps
       )
       .accounts({
         event: eventPda1,

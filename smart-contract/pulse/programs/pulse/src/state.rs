@@ -7,8 +7,17 @@ use anchor_lang::prelude::*;
 #[account]
 pub struct Event {
     pub organizer: Pubkey,
-    pub event_id: String,              // max 50 chars
-    pub organizer_fee_bps: u16,        // Fee on sales (basis points)
+    pub event_id: String,      // max 50
+    pub name: String,          // max 100
+    pub description: String,   // max 200
+    pub image_url: String,     // max 200
+    pub location: String,      // max 100
+    pub event_start: i64,
+    pub event_end: i64,
+    pub sale_start: i64,
+    pub sale_end: i64,
+    pub max_tickets_per_user: u32,
+    pub organizer_fee_bps: u16,
     pub total_tickets_sold: u64,
     pub total_revenue: u64,
     pub is_active: bool,
@@ -18,13 +27,22 @@ pub struct Event {
 
 impl Event {
     pub const SPACE: usize = 8   // discriminator
-        + 32                      // organizer
-        + 4 + 50                  // event_id (string)
-        + 2                       // organizer_fee_bps
-        + 8                       // total_tickets_sold
-        + 8                       // total_revenue
-        + 1                       // is_active
-        + 8                       // created_at
+        + 32                      // organizer (Pubkey)
+        + (4 + 50)                // event_id string
+        + (4 + 100)               // name string
+        + (4 + 500)               // description string (kasih lebih lebar)
+        + (4 + 200)               // image_url string
+        + (4 + 100)               // location string
+        + 8                       // event_start (i64)
+        + 8                       // event_end (i64)
+        + 8                       // sale_start (i64)
+        + 8                       // sale_end (i64)
+        + 4                       // max_tickets_per_user (u32)
+        + 2                       // organizer_fee_bps (u16)
+        + 8                       // total_tickets_sold (u64)
+        + 8                       // total_revenue (u64)
+        + 1                       // is_active (bool)
+        + 8                       // created_at (i64)
         + 1;                      // bump
 }
 
@@ -35,7 +53,9 @@ impl Event {
 #[account]
 pub struct TicketTier {
     pub event: Pubkey,
-    pub tier_id: String,              // max 20 chars
+    pub tier_id: String,
+    pub name: String,        
+    pub description: String, 
     pub price: u64,
     pub max_supply: u64,
     pub current_supply: u64,
@@ -44,14 +64,7 @@ pub struct TicketTier {
 }
 
 impl TicketTier {
-    pub const SPACE: usize = 8   // discriminator
-        + 32                      // event
-        + 4 + 20                  // tier_id (string)
-        + 8                       // price
-        + 8                       // max_supply
-        + 8                       // current_supply
-        + 1                       // is_active
-        + 1;                      // bump
+    pub const SPACE: usize = 8 + 32 + (4 + 20) + (4 + 50) + (4 + 100) + 8 + 8 + 8 + 1 + 1;
 }
 
 /// =====================================
@@ -61,36 +74,22 @@ impl TicketTier {
 #[account]
 pub struct AIAgent {
     pub owner: Pubkey,
-    pub agent_id: String,             // max 30 chars
+    pub agent_id: String,
+    pub name: String,                
     pub is_active: bool,
-    pub auto_purchase_enabled: bool,  // Enable/disable auto-purchase
-    pub auto_purchase_threshold: u16, // Price threshold (basis points, 10000 = 100%)
-
-    // Budget
+    pub auto_purchase_enabled: bool,
+    pub auto_purchase_threshold: u16,
     pub max_budget_per_ticket: u64,
     pub total_budget: u64,
     pub spent_budget: u64,
-
-    // Statistics
+    pub max_tickets_per_event: u32,  
     pub tickets_purchased: u64,
-
     pub created_at: i64,
     pub bump: u8,
 }
 
 impl AIAgent {
-    pub const SPACE: usize = 8   // discriminator
-        + 32                      // owner
-        + 4 + 30                  // agent_id (string)
-        + 1                       // is_active
-        + 1                       // auto_purchase_enabled
-        + 2                       // auto_purchase_threshold
-        + 8                       // max_budget_per_ticket
-        + 8                       // total_budget
-        + 8                       // spent_budget
-        + 8                       // tickets_purchased
-        + 8                       // created_at
-        + 1;                      // bump
+    pub const SPACE: usize = 8 + 32 + (4 + 30) + (4 + 50) + 1 + 1 + 2 + 8 + 8 + 8 + 4 + 8 + 8 + 1;
 }
 
 /// =====================================

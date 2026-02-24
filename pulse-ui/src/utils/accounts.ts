@@ -276,6 +276,7 @@ function decodeAccount<T>(program: Program, typeName: string, data: Buffer): T {
 /**
  * Fetch all events for the program
  */
+// Ganti fungsi fetchAllEvents lo jadi gini:
 export async function fetchAllEvents(
   connection: Connection,
   programId: PublicKey,
@@ -296,31 +297,42 @@ export async function fetchAllEvents(
     );
 
     return accounts.map((account) => {
-      // Use Anchor's coder to properly decode the account data
-      const event = decodeAccount<Event>(program, 'event', account.account.data);
-      return {
-        publicKey: account.pubkey,
-        account: event,
-      };
-    });
+      try {
+        // //TESTING YAAAAA: Pakai coder bawaan program biar ga kena RangeError
+        const decodedData = program.coder.accounts.decode('event', account.account.data) as Event;
+        return {
+          publicKey: account.pubkey,
+          account: decodedData,
+        };
+      } catch (e) {
+        console.warn("Skipping legacy event account:", account.pubkey.toBase58());
+        return null;
+      }
+    }).filter(e => e !== null) as ProgramAccount<Event>[];
   } catch (error) {
     console.error('[fetchAllEvents] Error:', error);
     return [];
   }
 }
 
+
+
 /**
  * Fetch a single event
  */
+// Lakukan hal yang sama buat fetchEvent tunggal:
 export async function fetchEvent(
   connection: Connection,
-  eventPDA: PublicKey
+  eventPDA: PublicKey,
+  program: Program // Tambahin parameter program
 ): Promise<Event | null> {
   const account = await connection.getAccountInfo(eventPDA);
   if (!account) return null;
-  // Skip 8-byte discriminator and parse the Event struct
-  const data = account.data.subarray(8);
-  return parseEventAccount(data);
+  try {
+    return program.coder.accounts.decode('event', account.data) as Event;
+  } catch (e) {
+    return null;
+  }
 }
 
 /**
@@ -333,45 +345,49 @@ function parseEventAccount(data: Buffer): Event {
   const organizer = new PublicKey(data.subarray(offset, offset + 32));
   offset += 32;
 
-  // event_id: String (4 bytes length + string)
-  const eventIdLen = data.readUInt32LE(offset);
-  offset += 4;
+  // event_id: String
+  const eventIdLen = data.readUInt32LE(offset); offset += 4;
   const eventId = data.subarray(offset, offset + eventIdLen).toString('utf8');
   offset += eventIdLen;
 
-  // organizer_fee_bps: u16 (2 bytes)
-  const organizerFeeBps = data.readUInt16LE(offset);
-  offset += 2;
+  // name: String
+  const nameLen = data.readUInt32LE(offset); offset += 4;
+  const name = data.subarray(offset, offset + nameLen).toString('utf8');
+  offset += nameLen;
 
-  // total_tickets_sold: u64 (8 bytes)
-  const totalTicketsSold = BigInt(data.readBigUInt64LE(offset));
-  offset += 8;
+  // description: String
+  const descLen = data.readUInt32LE(offset); offset += 4;
+  const description = data.subarray(offset, offset + descLen).toString('utf8');
+  offset += descLen;
 
-  // total_revenue: u64
-  const totalRevenue = BigInt(data.readBigUInt64LE(offset));
-  offset += 8;
+  // image_url: String
+  const imgLen = data.readUInt32LE(offset); offset += 4;
+  const imageUrl = data.subarray(offset, offset + imgLen).toString('utf8');
+  offset += imgLen;
 
-  // is_active: bool (1 byte)
-  const isActive = data.readUInt8(offset) !== 0;
-  offset += 1;
+  // location: String
+  const locLen = data.readUInt32LE(offset); offset += 4;
+  const location = data.subarray(offset, offset + locLen).toString('utf8');
+  offset += locLen;
 
-  // created_at: i64 (8 bytes)
-  const createdAt = BigInt(data.readBigUInt64LE(offset));
-  offset += 8;
-
-  // bump: u8
+  // Timestamps & Stats
+  const eventStart = new BN(data.subarray(offset, offset + 8), 'le'); offset += 8;
+  const eventEnd = new BN(data.subarray(offset, offset + 8), 'le'); offset += 8;
+  const saleStart = new BN(data.subarray(offset, offset + 8), 'le'); offset += 8;
+  const saleEnd = new BN(data.subarray(offset, offset + 8), 'le'); offset += 8;
+  const maxTicketsPerUser = data.readUInt32LE(offset); offset += 4;
+  const organizerFeeBps = data.readUInt16LE(offset); offset += 2;
+  const totalTicketsSold = new BN(data.subarray(offset, offset + 8), 'le'); offset += 8;
+  const totalRevenue = new BN(data.subarray(offset, offset + 8), 'le'); offset += 8;
+  const isActive = data.readUInt8(offset) !== 0; offset += 1;
+  const createdAt = new BN(data.subarray(offset, offset + 8), 'le'); offset += 8;
   const bump = data.readUInt8(offset);
 
   return {
-    organizer,
-    eventId,
-    organizerFeeBps,
-    totalTicketsSold,
-    totalRevenue,
-    isActive,
-    createdAt,
-    bump,
-  } as any as Event;
+    organizer, eventId, name, description, imageUrl, location,
+    eventStart, eventEnd, saleStart, saleEnd, maxTicketsPerUser,
+    organizerFeeBps, totalTicketsSold, totalRevenue, isActive, createdAt, bump
+  } as any;
 }
 
 /**

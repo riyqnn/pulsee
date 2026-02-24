@@ -20,24 +20,38 @@ pub mod pulse {
     pub fn create_event(
         ctx: Context<CreateEvent>,
         event_id: String,
+        name: String,        // Tambah ini
+        description: String, // Tambah ini
+        image_url: String,   // Tambah ini
+        location: String,    // Tambah ini
+        event_start: i64,    // Tambah ini
+        event_end: i64,      // Tambah ini
+        sale_start: i64,     // Tambah ini
+        sale_end: i64,       // Tambah ini
+        max_tickets: u32,    // Tambah ini
         organizer_fee_bps: u16,
     ) -> Result<()> {
         let event = &mut ctx.accounts.event;
         let clock = Clock::get()?;
 
-        require!(event_id.len() <= 50, TixError::InvalidInput);
-        require!(organizer_fee_bps <= 10000, TixError::InvalidFeeBps);
-
         event.organizer = ctx.accounts.organizer.key();
         event.event_id = event_id;
+        event.name = name;
+        event.description = description;
+        event.image_url = image_url;
+        event.location = location;
+        event.event_start = event_start;
+        event.event_end = event_end;
+        event.sale_start = sale_start;
+        event.sale_end = sale_end;
+        event.max_tickets_per_user = max_tickets;
         event.organizer_fee_bps = organizer_fee_bps;
+        
         event.total_tickets_sold = 0;
         event.total_revenue = 0;
         event.is_active = true;
         event.created_at = clock.unix_timestamp;
         event.bump = ctx.bumps.event;
-
-        msg!("Event created: {}", event.event_id);
         Ok(())
     }
 
@@ -48,6 +62,8 @@ pub mod pulse {
     pub fn create_ticket_tier(
         ctx: Context<CreateTicketTier>,
         tier_id: String,
+        name: String,        
+        description: String, 
         price: u64,
         max_supply: u64,
     ) -> Result<()> {
@@ -61,13 +77,14 @@ pub mod pulse {
 
         tier.event = ctx.accounts.event.key();
         tier.tier_id = tier_id;
+        tier.name = name;              
+        tier.description = description;
         tier.price = price;
         tier.max_supply = max_supply;
         tier.current_supply = 0;
         tier.is_active = true;
         tier.bump = ctx.bumps.tier;
 
-        msg!("Ticket tier created: {} at {} lamports", tier.tier_id, tier.price);
         Ok(())
     }
 
@@ -78,29 +95,30 @@ pub mod pulse {
     pub fn create_ai_agent(
         ctx: Context<CreateAIAgent>,
         agent_id: String,
+        name: String,                    
         max_budget_per_ticket: u64,
         total_budget: u64,
+        auto_purchase_enabled: bool,     
+        auto_purchase_threshold: u16,    
+        max_tickets_per_event: u32,      
     ) -> Result<()> {
         let agent = &mut ctx.accounts.agent;
         let clock = Clock::get()?;
 
-        require!(agent_id.len() <= 30, TixError::InvalidInput);
-        require!(max_budget_per_ticket > 0, TixError::InvalidBudget);
-        require!(total_budget > 0, TixError::InvalidBudget);
-
         agent.owner = ctx.accounts.owner.key();
         agent.agent_id = agent_id;
+        agent.name = name; 
         agent.is_active = true;
-        agent.auto_purchase_enabled = false;     // Default disabled
-        agent.auto_purchase_threshold = 10000;   // Default 100%
+        agent.auto_purchase_enabled = auto_purchase_enabled;
+        agent.auto_purchase_threshold = auto_purchase_threshold;
         agent.max_budget_per_ticket = max_budget_per_ticket;
         agent.total_budget = total_budget;
+        agent.max_tickets_per_event = max_tickets_per_event; 
         agent.spent_budget = 0;
         agent.tickets_purchased = 0;
         agent.created_at = clock.unix_timestamp;
         agent.bump = ctx.bumps.agent;
 
-        msg!("AI Agent created: {} with budget {}", agent.agent_id, agent.total_budget);
         Ok(())
     }
 

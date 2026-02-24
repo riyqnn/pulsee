@@ -8,20 +8,31 @@
 export interface Event {
   organizer: PublicKey;
   eventId: string;
+  name: string;          // Tambah
+  description: string;   // Tambah
+  imageUrl: string;      // Tambah
+  location: string;      // Tambah
+  eventStart: BN;        // Tambah (pakai BN karena i64)
+  eventEnd: BN;
+  saleStart: BN;
+  saleEnd: BN;
+  maxTicketsPerUser: number;
   organizerFeeBps: number;
-  totalTicketsSold: bigint;
-  totalRevenue: bigint;
+  totalTicketsSold: BN;
+  totalRevenue: BN;
   isActive: boolean;
-  createdAt: bigint;
+  createdAt: BN;
   bump: number;
 }
 
 export interface TicketTier {
   event: PublicKey;
   tierId: string;
-  price: bigint;
-  maxSupply: bigint;
-  currentSupply: bigint;
+  name: string;        // Tambah
+  description: string; // Tambah
+  price: BN;
+  maxSupply: BN;
+  currentSupply: BN;
   isActive: boolean;
   bump: number;
 }
@@ -121,6 +132,7 @@ export function isAgentEscrow(obj: any): obj is AgentEscrow {
   return obj && typeof obj.balance !== 'undefined' && typeof obj.agent !== 'undefined';
 }
 
+import type { BN } from '@coral-xyz/anchor';
 // ============== Type Imports ==============
 
 import { PublicKey } from '@solana/web3.js';

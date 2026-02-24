@@ -34,7 +34,10 @@ export const EventDetailModal = ({ event, onClose }: EventDetailModalProps) => {
   const [selectedTier, setSelectedTier] = useState<string | null>(null);
 
   // Get the first active agent (simplified - no autoPurchaseEnabled check)
-  const activeAgent = agents.find(a => a.account.isActive);
+  const activeAgent = agents.find(a => {
+    // Cek property isActive (bisa jadi is_active di beberapa environment)
+    return (a.account as any).isActive === true || (a.account as any).is_active === true;
+  });
 
   useEffect(() => {
     document.body.style.overflow = 'hidden';
@@ -47,43 +50,58 @@ export const EventDetailModal = ({ event, onClose }: EventDetailModalProps) => {
     };
   }, [refresh]);
 
+
   const handleBuyTicket = async (tierId: string, useAgentForPurchase: boolean = false) => {
-    if (!publicKey) {
-      alert('CONNECT WALLET FIRST');
-      return;
-    }
-
-    if (!isReady) {
-      alert('WAIT FOR CONNECTION TO BE READY');
-      return;
-    }
-
-    if (useAgentForPurchase && !activeAgent) {
-      alert('NO ACTIVE AGENT FOUND - ACTIVATE AN AGENT FIRST');
-      return;
-    }
+    if (!publicKey) return alert('CONNECT WALLET FIRST');
 
     setLoading(true);
     setSelectedTier(tierId);
 
     try {
-      // Direct buy with agent (simplified - buyTicketWithAgent removed)
-      // For MVP, use escrow-based purchase via scheduler
-      if (useAgentForPurchase && activeAgent) {
-        alert('Use Escrow Dashboard to purchase with agent. Direct purchase via agent not available in MVP.');
-        return;
-      }
+      if (useAgentForPurchase) {
+        if (!activeAgent) {
+          alert('GAK ADA AGENT AKTIF, CU! Bikin dulu atau aktifin di Command Center.');
+          setLoading(false);
+          return;
+        }
 
-      // Direct buy ticket (also removed in MVP)
-      await buyTicket({
-        eventPDA: event.publicKey,
-        tierId: tierId,
-      });
-      alert('TICKET PURCHASED SUCCESSFULLY');
-      onClose();
+        console.log("🤖 Asking Backend Agent to buy...");
+        
+        const agentId = (activeAgent.account as any).agentId || (activeAgent.account as any).agent_id;
+
+        const response = await fetch('http://localhost:3001/trigger-agent', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            agentOwner: publicKey.toBase58(),
+            agentId: agentId,
+            organizerPubkey: event.publicKey.toBase58(), 
+            eventId: event.id,
+            tierId: tierId,
+          }),
+        });
+
+        const result = await response.json();
+        
+        if (result.success) {
+          alert(`MISSION SUCCESS! TX: ${result.tx}`);
+          onClose();
+        } else {
+          throw new Error(result.error || 'Backend error');
+        }
+
+      } else {
+        // Manual Buy (Direct)
+        await buyTicket({
+          eventPDA: event.publicKey,
+          tierId: tierId,
+        });
+        alert('TICKET PURCHASED SUCCESSFULLY');
+        onClose();
+      }
     } catch (error: any) {
-      console.error('Failed to buy ticket:', error);
-      alert(`PURCHASE FAILED: ${error.message || 'UNKNOWN ERROR'}`);
+      console.error('Purchase failed:', error);
+      alert(`FAILED: ${error.message}`);
     } finally {
       setLoading(false);
       setSelectedTier(null);
