@@ -1,44 +1,55 @@
-import { Zap, ShieldCheck, Ticket } from 'lucide-react';
+import { Zap, ShieldCheck, Plane } from 'lucide-react';
 
 export const FeaturesSection = () => {
   return (
-    <section className="py-16 sm:py-24 bg-black text-white border-y-4 border-black">
-      <div className="container mx-auto px-6">
-        <h2 className="text-4xl sm:text-5xl font-extrabold tracking-tighter text-center mb-4">
-          A Brutally Unfair Advantage
+    <section className="py-24 bg-black text-white overflow-hidden relative">
+      {/* Decorative background text */}
+      <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none select-none font-black text-[20vw] leading-none uppercase italic overflow-hidden whitespace-nowrap">
+        NEURAL NET NEURAL NET NEURAL NET
+      </div>
+
+      <div className="container mx-auto px-6 relative z-10">
+        <h2 className="text-6xl sm:text-8xl font-black tracking-tighter text-center mb-6 uppercase italic">
+          BEYOND TICKETING
         </h2>
-        <p className="text-lg sm:text-xl text-center max-w-3xl mx-auto mb-12 sm:mb-16 text-gray-400">
-          Pulse isn't just another tool. It's a new weapon in your arsenal, built with three core principles.
+        <p className="text-xl sm:text-3xl text-center max-w-4xl mx-auto mb-20 font-mono font-bold text-[#00FF41]">
+          Pulse isn't just a marketplace. It's an automated ecosystem built on Solana.
         </p>
-        <div className="grid md:grid-cols-3 gap-8">
-          <div className="bg-white text-black border-4 border-black p-6 sm:p-8 shadow-neo-sm hover:shadow-neo transition-shadow transform hover:-translate-y-1">
-            <div className="bg-neo-pink inline-block p-3 mb-4 border-4 border-black">
-              <Zap className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
+        
+        <div className="grid md:grid-cols-3 gap-12">
+          {/* Feature 1 */}
+          <div className="bg-[#FF00F5] text-white border-8 border-white p-10 shadow-[16px_16px_0_0_#000] hover:shadow-none transition-all transform hover:translate-x-2 hover:translate-y-2">
+            <div className="bg-white inline-block p-4 mb-6 border-4 border-black -rotate-12">
+              <Zap className="w-12 h-12 text-[#FF00F5]" />
             </div>
-            <h3 className="text-2xl font-bold mb-2">Speed & Autonomy</h3>
-            <p className="font-mono">
+            <h3 className="text-3xl font-black mb-4 uppercase italic">Agentic Speed</h3>
+            <p className="font-mono font-bold text-lg leading-tight">
               AI agents operate on-chain, executing purchases at machine speed.
-              Set your strategy, deploy, and let the agent do the work.
+              Never lose to a bot again—deploy your own.
             </p>
           </div>
-          <div className="bg-white text-black border-4 border-black p-6 sm:p-8 shadow-neo-sm hover:shadow-neo transition-shadow transform hover:-translate-y-1">
-            <div className="bg-neo-green inline-block p-3 mb-4 border-4 border-black">
-              <ShieldCheck className="w-8 h-8 sm:w-10 sm:h-10 text-black" />
+
+          {/* Feature 2 */}
+          <div className="bg-[#00FF41] text-black border-8 border-black p-10 shadow-[16px_16px_0_0_#FF00F5] hover:shadow-none transition-all transform hover:translate-x-2 hover:translate-y-2">
+            <div className="bg-black inline-block p-4 mb-6 border-4 border-white rotate-6">
+              <ShieldCheck className="w-12 h-12 text-[#00FF41]" />
             </div>
-            <h3 className="text-2xl font-bold mb-2">Security & Control</h3>
-            <p className="font-mono">
-              Non-custodial by design. Your funds live in a secure escrow on
-              Solana, and you always have the final say.
+            <h3 className="text-3xl font-black mb-4 uppercase italic">Secure Escrow</h3>
+            <p className="font-mono font-bold text-lg leading-tight text-black/80">
+              Non-custodial security. Your funds live in audited on-chain escrows.
+              You maintain 100% control of your assets.
             </p>
           </div>
-          <div className="bg-white text-black border-4 border-black p-6 sm:p-8 shadow-neo-sm hover:shadow-neo transition-shadow transform hover:-translate-y-1">
-            <div className="bg-black inline-block p-3 mb-4 border-4 border-black">
-              <Ticket className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
+
+          {/* Feature 3 */}
+          <div className="bg-white text-black border-8 border-black p-10 shadow-[16px_16px_0_0_#FFEB3B] hover:shadow-none transition-all transform hover:translate-x-2 hover:translate-y-2">
+            <div className="bg-[#FFEB3B] inline-block p-4 mb-6 border-4 border-black -rotate-3">
+              <Plane className="w-12 h-12 text-black" />
             </div>
-            <h3 className="text-2xl font-bold mb-2">Market Access</h3>
-            <p className="font-mono">
-              Seamlessly transition from primary sales to a transparent,
-              on-chain secondary market to buy or sell tickets.
+            <h3 className="text-3xl font-black mb-4 uppercase italic">Auto Logistics</h3>
+            <p className="font-mono font-bold text-lg leading-tight">
+              Pulse syncs with your Google Calendar and location to automatically 
+              handle flight routing for every ticket you secure.
             </p>
           </div>
         </div>

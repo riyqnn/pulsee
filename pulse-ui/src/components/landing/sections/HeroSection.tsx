@@ -47,7 +47,7 @@ const DotGrid = () => {
 
 // Main Hero Section Component - More GACOR version
 export const HeroSection = () => {
-  const headlineText = "Stop Racing Bots. Deploy Your Own.";
+  const headlineText = "Event Ticketing. Reimagined by AI.";
   const words = headlineText.split(" ");
 
   const containerVariants = {
@@ -66,24 +66,23 @@ export const HeroSection = () => {
   };
 
   return (
-    <section className="relative h-[90vh] sm:h-screen flex items-center justify-center overflow-hidden bg-[#FFFDFA]">
+    <section className="relative h-[90vh] sm:h-screen flex items-center justify-center overflow-hidden bg-[#FFEB3B]">
       <DotGrid />
 
       {/* MORE Decorative, animated blocks */}
-      <motion.div className="absolute top-5 left-5 w-24 h-24 sm:w-40 sm:h-40 bg-neo-green border-4 border-black z-10" animate={{ y: [0, -25, 0], x: [0, 10, 0], rotate: [0, 15, 0] }} transition={{ duration: 15, repeat: Infinity, ease: 'easeInOut' }} />
-      <motion.div className="absolute bottom-1/4 right-5 w-20 h-20 sm:w-28 sm:h-28 bg-black z-10" animate={{ y: [0, 20, 0], rotate: [0, -20, 0] }} transition={{ duration: 18, repeat: Infinity, ease: 'easeInOut', delay: 1 }} />
-      <motion.div className="absolute top-1/2 left-1/4 w-12 h-12 sm:w-16 sm:h-16 bg-white border-4 border-black z-10" animate={{ scale: [1, 1.2, 1], rotate: [0, 90, 0] }} transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut', delay: 2 }} />
-      <motion.div className="hidden sm:block absolute bottom-10 left-10 w-20 h-20 bg-neo-yellow border-4 border-black z-10" animate={{ x: [0, 30, 0] }} transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut', delay: 3 }} />
+      <motion.div className="absolute top-10 right-10 w-32 h-32 sm:w-56 sm:h-56 bg-[#FF00F5] border-8 border-black z-10 shadow-[16px_16px_0_0_#000000]" animate={{ y: [0, -40, 0], x: [0, 20, 0], rotate: [0, -15, 0] }} transition={{ duration: 12, repeat: Infinity, ease: 'easeInOut' }} />
+      <motion.div className="absolute bottom-20 left-10 w-24 h-24 sm:w-48 sm:h-48 bg-[#00FF41] border-8 border-black z-10 shadow-[12px_12px_0_0_#000000]" animate={{ y: [0, 30, 0], rotate: [0, 20, 0] }} transition={{ duration: 15, repeat: Infinity, ease: 'easeInOut', delay: 1 }} />
+      <motion.div className="absolute top-1/4 left-5 w-16 h-16 sm:w-24 sm:h-24 bg-white border-4 border-black z-10" animate={{ scale: [1, 1.3, 1], rotate: [0, 180, 0] }} transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut', delay: 2 }} />
 
 
       <motion.div
         className="relative container mx-auto px-4 text-center z-10"
-        animate={{ y: [0, -10, 0] }}
-        transition={{ duration: 8, ease: "easeInOut", repeat: Infinity }}
+        animate={{ y: [0, -15, 0] }}
+        transition={{ duration: 6, ease: "easeInOut", repeat: Infinity }}
       >
-        <div className="bg-white border-4 border-black shadow-[12px_12px_0_0_#000000] p-6 sm:p-10 max-w-4xl mx-auto">
+        <div className="bg-white border-8 border-black shadow-[32px_32px_0_0_#000000] p-8 sm:p-16 max-w-5xl mx-auto transform -rotate-1">
           <motion.h1
-            className="text-4xl sm:text-6xl md:text-7xl font-extrabold tracking-tighter mb-4"
+            className="text-5xl sm:text-7xl md:text-8xl font-black tracking-tighter mb-6 leading-none uppercase italic"
             variants={containerVariants}
             initial="hidden"
             animate="visible"
@@ -92,22 +91,30 @@ export const HeroSection = () => {
               <motion.span
                 key={index}
                 variants={wordVariants}
-                className={`inline-block mr-3 ${word === "Own." ? "bg-neo-pink text-white px-4 -skew-x-6" : ""}`}
+                className={`inline-block mr-4 ${word === "AI." ? "bg-[#FF00F5] text-white px-6 skew-x-12 shadow-[8px_8px_0_0_#000]" : ""}`}
               >
                 {word}
               </motion.span>
             ))}
           </motion.h1>
-          <p className="text-base sm:text-xl md:text-2xl max-w-2xl mx-auto mb-8 text-gray-800 font-mono">
-            Pulse gives you the power of AI agents to secure tickets on Solana—seamlessly and autonomously.
+          <p className="text-xl sm:text-2xl md:text-3xl max-w-3xl mx-auto mb-10 text-black font-mono font-bold leading-tight">
+            The first decentralized protocol that automates your entire event experience—from ticket sniping to flight logistics.
           </p>
-          <Link
-            to="/"
-            className="inline-flex items-center gap-3 bg-neo-green text-neo-black font-bold border-4 border-neo-black px-6 py-3 sm:px-8 sm:py-4 text-lg sm:text-xl shadow-[6px_6px_0_0_#000] hover:shadow-none transition-all transform hover:-translate-y-1 hover:-translate-x-1"
-          >
-            <span>Enter App & Deploy</span>
-            <ArrowRight className="w-5 h-5 sm:w-6 sm:h-6" />
-          </Link>
+          <div className="flex flex-col sm:flex-row gap-6 justify-center">
+            <Link
+              to="/"
+              className="inline-flex items-center justify-center gap-3 bg-[#00FF41] text-black font-black border-4 border-black px-10 py-5 text-xl sm:text-2xl shadow-[8px_8px_0_0_#000] hover:shadow-none transition-all transform hover:-translate-y-1 hover:-translate-x-1"
+            >
+              <span>LAUNCH APP</span>
+              <ArrowRight className="w-6 h-6 sm:w-8 h-8" />
+            </Link>
+            <a
+              href="#how-it-works"
+              className="inline-flex items-center justify-center gap-3 bg-white text-black font-black border-4 border-black px-10 py-5 text-xl sm:text-2xl shadow-[8px_8px_0_0_#000] hover:shadow-none transition-all transform hover:-translate-y-1 hover:-translate-x-1"
+            >
+              <span>LEARN FLOW</span>
+            </a>
+          </div>
         </div>
       </motion.div>
 

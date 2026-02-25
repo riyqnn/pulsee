@@ -257,6 +257,34 @@ export const MyTickets = ({ ownerPublicKey }: MyTicketsProps) => {
 
   const calendarEvents = getCalendarEvents();
 
+  const handleDownload = (ticket: TicketNFT) => {
+    const content = `
+      TICKET: ${ticket.nftMetadata?.name || ticket.metadata.name}
+      MINT: ${ticket.mint}
+      EVENT: ${ticket.metadata.name}
+      VENUE: ${ticket.metadata.location}
+      DATE: ${ticket.metadata.event_start ? new Date(ticket.metadata.event_start).toLocaleString() : 'TBD'}
+      TIER: ${ticket.nftMetadata?.attributes?.find((a: any) => a.trait_type === 'Tier')?.value || 'N/A'}
+      
+      --- LOGISTICS ---
+      FLIGHT STATUS: ${ticket.itinerary?.status || 'N/A'}
+      PROVIDER: ${ticket.itinerary?.provider || ticket.itinerary?.airline || 'N/A'}
+      DEPARTURE: ${ticket.itinerary?.departure_time || 'N/A'}
+      EST COST: $${ticket.itinerary?.estimated_cost_usd || '0'}
+      
+      --- AI REASONING ---
+      ${ticket.reasoning || 'N/A'}
+    `;
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `ticket-${ticket.mint.slice(0, 8)}.txt`;
+    link.click();
+    URL.revokeObjectURL(url);
+    addToast("Ticket data downloaded!", "success");
+  };
+
   if (loading) {
     return (
       <div className="text-center py-20 font-mono">
@@ -551,10 +579,6 @@ export const MyTickets = ({ ownerPublicKey }: MyTicketsProps) => {
 
                   {selectedTicket.itinerary && (
                     <div className="space-y-4">
-                      <h3 className="font-black text-2xl uppercase italic border-b-4 border-black pb-2 flex items-center gap-3">
-                        <span className="text-3xl">✈️</span>
-                        <span>AI Logistics</span>
-                      </h3>
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 font-mono text-sm">
                         <div className="bg-neutral-100 border-2 border-black p-3 shadow-[4px_4px_0_0_#000000]"><div className="text-[10px] text-neutral-500 uppercase font-bold mb-1">Status</div><div className="font-black text-base text-[#FF00F5] uppercase">{selectedTicket.itinerary.status || 'N/A'}</div></div>
                         <div className="bg-neutral-100 border-2 border-black p-3 shadow-[4px_4px_0_0_#000000]"><div className="text-[10px] text-neutral-500 uppercase font-bold mb-1">Provider</div><div className="font-black text-base uppercase">{selectedTicket.itinerary.provider || selectedTicket.itinerary.airline || 'N/A'}</div></div>
@@ -564,7 +588,7 @@ export const MyTickets = ({ ownerPublicKey }: MyTicketsProps) => {
                       {selectedTicket.reasoning && (
                         <div className="bg-black p-4 border-4 border-black mt-4">
                           <div className="text-[12px] text-[#00FF41] font-mono mb-2 border-b border-[#00FF41]/30 pb-1 flex items-center justify-between">
-                            <span>AI_REASONING_LOG.txt</span>
+                            <span>AGENT_REASONING_LOG.txt</span>
                             <span className="animate-pulse">_</span>
                           </div>
                           <div className="text-white text-sm font-mono leading-relaxed max-h-24 overflow-y-auto custom-scrollbar pr-2">{selectedTicket.reasoning}</div>
@@ -574,7 +598,10 @@ export const MyTickets = ({ ownerPublicKey }: MyTicketsProps) => {
                   )}
 
                   <div className="flex flex-col sm:flex-row gap-4 pt-6 border-t-8 border-black">
-                    <button className="flex-1 flex items-center justify-center gap-2 border-4 border-black bg-[#FFEB3B] py-3 font-black uppercase hover:bg-[#FFD600] hover:-translate-y-1 transition-all shadow-[4px_4px_0_0_#000]">
+                    <button 
+                      onClick={() => handleDownload(selectedTicket)}
+                      className="flex-1 flex items-center justify-center gap-2 border-4 border-black bg-[#FFEB3B] py-3 font-black uppercase hover:bg-[#FFD600] hover:-translate-y-1 transition-all shadow-[4px_4px_0_0_#000]"
+                    >
                       <Download size={20}/>
                       Download
                     </button>

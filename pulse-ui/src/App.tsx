@@ -10,6 +10,7 @@ import { useProgram } from './hooks/useProgram';
 import LandingPage from './components/landing/LandingPage';
 import { OnboardingModal } from './components/OnboardingModal';
 import { ToastProvider } from './contexts/ToastContext';
+import { PrivacyPolicy, TermsOfService } from './components/legal/LegalPages';
 
 type Tab = 'agents' | 'marketplace' | 'secondary' | 'tickets';
 
@@ -141,14 +142,14 @@ function MainApp() {
   );
 }
 
-import { ToastProvider } from './contexts/ToastContext';
-
 function App() {
   return (
     <ToastProvider>
       <Routes>
         <Route path="/" element={<MainApp />} />
         <Route path="/home" element={<LandingPage />} />
+        <Route path="/privacy" element={<PrivacyPolicy />} />
+        <Route path="/terms" element={<TermsOfService />} />
       </Routes>
     </ToastProvider>
   );
