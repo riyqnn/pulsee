@@ -120,7 +120,6 @@ export const MarketplaceGrid = () => {
       {/* Grid Content */}
       {isLoading ? (
         <div className="text-center py-20">
-           <div className="inline-block w-12 h-12 border-8 border-black border-t-[#00FF41] rounded-full animate-spin mb-4"></div>
            <p className="font-mono text-xl font-black italic">SYNCING HYBRID DATA...</p>
         </div>
       ) : eventsWithTiers.length === 0 ? (

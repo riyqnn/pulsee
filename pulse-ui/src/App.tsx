@@ -5,9 +5,7 @@ import { AgentCommandCenter } from './components/agent';
 import { MarketplaceGrid, SecondaryMarket } from './components/marketplace';
 import { MyTickets } from './components/MyTickets';
 import { WalletButton } from './components/WalletButton';
-import { AgentsProvider, useAgentsContext } from './contexts/AgentsContext';
-import { EventsProvider } from './contexts/EventsContext';
-import { MarketProvider } from './contexts/MarketContext';
+import { useAgentsContext } from './contexts/AgentsContext';
 import { useProgram } from './hooks/useProgram';
 import LandingPage from './components/landing/LandingPage';
 
@@ -15,7 +13,7 @@ type Tab = 'agents' | 'marketplace' | 'secondary' | 'tickets';
 
 function MainApp() {
   const [activeTab, setActiveTab] = useState<Tab>('agents');
-  const { connectionStatus, programId, publicKey } = useProgram();
+  const { publicKey } = useProgram();
   const { activeAgents } = useAgentsContext();
 
   const tabs: { id: Tab; label: string; count?: string | number }[] = [
@@ -80,9 +78,8 @@ function MainApp() {
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={getTabClass(activeTab === tab.id)}
-                whileHover={activeTab === tab.id ? {} : { 
-                  scale: 1.02,
-                  shadow: "4px 4px 0px 0px #000000" 
+                whileHover={activeTab === tab.id ? {} : {
+                  scale: 1.02
                 }}
                 whileTap={{ scale: 0.95 }}
               >
@@ -121,38 +118,19 @@ function MainApp() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t-4 border-black mt-12 py-8 bg-black text-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center md:text-left">
+      <footer className="border-t border-gray-200 bg-white py-8">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <h4 className="font-display font-bold text-xl mb-4">PULSE PROTOCOL</h4>
-              <p className="font-mono text-sm" style={{ color: 'var(--color-neo-green)' }}>
+              <h4 className="font-bold text-lg">PULSE PROTOCOL</h4>
+              <p className="text-sm text-gray-600 mt-1">
                 Autonomous AI-powered ticket acquisition on Solana
               </p>
             </div>
-            <div>
-              <h4 className="font-display font-bold text-xl mb-4">CONTRACTS</h4>
-              <div className="font-mono text-xs space-y-1">
-                <p style={{ color: 'var(--color-neo-pink)' }}>Program ID:</p>
-                <p className="break-all">{programId?.toBase58().slice(0, 8)}...{programId?.toBase58().slice(-8)}</p>
-              </div>
+            <div className="text-right">
+              <p className="text-sm text-gray-600">Solana Devnet</p>
+              <p className="text-xs text-gray-500 mt-1">© 2025 Pulse Protocol</p>
             </div>
-            <div>
-              <h4 className="font-display font-bold text-xl mb-4">NETWORK</h4>
-              <p className="font-mono text-sm">Solana Devnet</p>
-              {connectionStatus && (
-                <div className="flex items-center justify-center md:justify-start gap-2 mt-2">
-                  <span className={`w-2 h-2 rounded-full ${connectionStatus.connected ? 'bg-neo-green' : 'bg-neo-pink'}`} />
-                  <span className="font-mono text-xs">{connectionStatus.connected ? 'Connected' : 'Disconnected'}</span>
-                </div>
-              )}
-              {connectionStatus?.slot && (
-                <p className="font-mono text-xs mt-1">Slot: {connectionStatus.slot.toLocaleString()}</p>
-              )}
-            </div>
-          </div>
-          <div className="border-t-2 border-white mt-8 pt-8 text-center font-mono text-xs">
-            <p>BUILT WITH ANCHOR • REACT • SOLANA</p>
           </div>
         </div>
       </footer>

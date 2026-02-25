@@ -1,18 +1,11 @@
 import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { usePrimaryMarket } from '../../hooks/usePrimaryMarket';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { useAgentsContext } from '../../contexts/AgentsContext';
-import { useProgram } from '../../hooks/useProgram';
-import { getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID } from '@solana/spl-token';
-import { Keypair, SystemProgram, PublicKey } from '@solana/web3.js';
-import { getTierPDA, getAgentPDA, getEscrowPDA, PROGRAM_ID } from '../../utils/accounts';
 import { useToast } from '../../contexts/ToastContext';
 import { supabase } from '../../utils/supabase';
 
 export const EventDetailModal = ({ event, onClose }: any) => {
-  const { isReady } = usePrimaryMarket();
-  const { program } = useProgram();
   const { publicKey } = useWallet();
   const { agents, refresh } = useAgentsContext();
   const { addToast } = useToast();

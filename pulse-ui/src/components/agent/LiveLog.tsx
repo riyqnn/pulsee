@@ -1,35 +1,63 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface LogEntry {
   timestamp: string;
-  agent: string;
+  agent?: string;
   action: string;
   type: 'info' | 'success' | 'warning' | 'error';
 }
 
-const mockLogs: LogEntry[] = [
-  { timestamp: '14:32:01', agent: 'AGENT_01', action: 'Analyzing LPR inventory...', type: 'info' },
-  { timestamp: '14:32:03', agent: 'AGENT_01', action: 'Price Match Found (95%)', type: 'success' },
-  { timestamp: '14:32:05', agent: 'AGENT_01', action: 'Executing Buy...', type: 'info' },
-  { timestamp: '14:32:07', agent: 'AGENT_02', action: 'Monitoring Dutch Auction decay', type: 'info' },
-  { timestamp: '14:32:10', agent: 'AGENT_01', action: 'Ticket Purchased! Saved 2.5 SOL', type: 'success' },
-  { timestamp: '14:32:15', agent: 'AGENT_03', action: 'Secondary market listing detected', type: 'warning' },
-];
-
 export const LiveLog = () => {
-  const [logs] = useState<LogEntry[]>(mockLogs);
+  const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [isLive, setIsLive] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const eventSourceRef = useRef<EventSource | null>(null);
 
-  // Auto-scroll to bottom
-  const scrollToBottom = () => {
+  useEffect(() => {
+    // Connect to SSE endpoint
+    const eventSource = new EventSource('http://localhost:3001/logs');
+    eventSourceRef.current = eventSource;
+
+    eventSource.onopen = () => {
+      setIsLive(true);
+    };
+
+    eventSource.onerror = () => {
+      setIsLive(false);
+      // Auto-reconnect after delay
+      setTimeout(() => {
+        if (eventSource.readyState === EventSource.CLOSED) {
+          setIsLive(true);
+        }
+      }, 3000);
+    };
+
+    eventSource.onmessage = (event) => {
+      try {
+        const newLog: LogEntry = JSON.parse(event.data);
+        setLogs(prev => {
+          const updated = [...prev, newLog];
+          // Limit to 100 entries
+          return updated.slice(-100);
+        });
+      } catch (e) {
+        console.error('Failed to parse log:', e);
+      }
+    };
+
+    return () => {
+      eventSource.close();
+      eventSourceRef.current = null;
+    };
+  }, []);
+
+  // Auto-scroll to bottom when new logs arrive
+  useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  };
-
-  // Initial scroll
-  scrollToBottom();
+  }, [logs]);
 
   const getActionClass = (type: LogEntry['type']) => {
     switch (type) {
@@ -46,6 +74,11 @@ export const LiveLog = () => {
 
   return (
     <div className="log-terminal" ref={scrollRef}>
+      {logs.length === 0 && (
+        <div className="log-entry font-mono text-sm text-neutral-500">
+          CONNECTING TO SCHEDULER...
+        </div>
+      )}
       <AnimatePresence mode="popLayout">
         {logs.map((log, index) => (
           <motion.div
@@ -55,20 +88,22 @@ export const LiveLog = () => {
             exit={{ opacity: 0, x: 20 }}
             className="log-entry font-mono text-sm"
           >
-            <span className="log-timestamp">[{log.timestamp}]</span>{' '}
-            <span className="log-agent">{log.agent}:</span>{' '}
-            <span className={getActionClass(log.type)}>{log.action}</span>
+            <span className="log-timestamp">[{log.timestamp}]</span>
+            {log.agent && <span className="log-agent"> {log.agent}:</span>}
+            <span className={getActionClass(log.type)}> {log.action}</span>
           </motion.div>
         ))}
       </AnimatePresence>
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: [1, 0.5, 1] }}
-        transition={{ repeat: Infinity, duration: 1 }}
-        className="log-entry font-mono text-sm text-[#FF00F5]"
-      >
-        ▊
-      </motion.div>
+      {isLive && logs.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: [1, 0.5, 1] }}
+          transition={{ repeat: Infinity, duration: 1 }}
+          className="log-entry font-mono text-xs text-[#FF00F5] mt-2"
+        >
+          LIVE UPDATES
+        </motion.div>
+      )}
     </div>
   );
 };

@@ -11,10 +11,12 @@ import type { AgentEscrow, AIAgent } from '../../types/pulse';
 interface EscrowDashboardProps {
   agentPDA: PublicKey;
   agentId: string;
+  nickname?: string;
 }
 
 export const EscrowDashboard: React.FC<EscrowDashboardProps> = ({
   agentPDA,
+  nickname,
 }) => {
   const { publicKey } = useWallet();
   const { addToast } = useToast();
@@ -162,10 +164,14 @@ export const EscrowDashboard: React.FC<EscrowDashboardProps> = ({
   return (
     <NeoCard className="p-6">
       <div className="flex items-center justify-between mb-4 border-b-4 border-neo-black pb-2">
-        <h3 className="font-display font-bold text-xl flex items-center gap-2">
-          <span className="w-2 h-2 bg-neo-yellow rounded-full animate-pulse"></span>
-          AGENT ESCROW
-        </h3>
+        <div>
+          <h3 className="font-display font-bold text-xl">
+            {nickname || 'AGENT ESCROW'}
+          </h3>
+          {nickname && (
+            <p className="font-mono text-xs text-gray-500 mt-1">ESCROW DASHBOARD</p>
+          )}
+        </div>
         <NeoBadge variant={escrow ? 'green' : 'black'}>
           {escrow ? 'ACTIVE' : 'NOT CREATED'}
         </NeoBadge>
@@ -187,10 +193,10 @@ export const EscrowDashboard: React.FC<EscrowDashboardProps> = ({
       ) : (
         <div className="space-y-4">
           {/* Balance Display */}
-          <div className="bg-neo-dark border-4 border-neo-black p-4">
+          <div className="bg-neutral-900 border-4 border-black p-4">
             <div className="text-center">
               <div className="font-mono text-xs text-gray-400 mb-1">CURRENT BALANCE</div>
-              <div className="font-display font-extrabold text-4xl text-neo-green">
+              <div className="font-display font-extrabold text-4xl text-[#00FF41]">
                 {balance} SOL
               </div>
             </div>
@@ -198,29 +204,29 @@ export const EscrowDashboard: React.FC<EscrowDashboardProps> = ({
 
           {/* Statistics */}
           <div className="grid grid-cols-2 gap-4 font-mono text-sm">
-            <div className="border-2 border-neo-black p-3">
+            <div className="border-2 border-black p-3">
               <div className="text-gray-400">Total Deposited</div>
               <div className="font-bold">{totalDeposited} SOL</div>
             </div>
-            <div className="border-2 border-neo-black p-3">
+            <div className="border-2 border-black p-3">
               <div className="text-gray-400">Total Withdrawn</div>
               <div className="font-bold">{totalWithdrawn} SOL</div>
             </div>
-            <div className="border-2 border-neo-black p-3 col-span-2">
+            <div className="border-2 border-black p-3 col-span-2">
               <div className="text-gray-400">Total Spent on Tickets</div>
-              <div className="font-bold text-neo-pink">{totalSpent} SOL</div>
+              <div className="font-bold text-[#FF00F5]">{totalSpent} SOL</div>
             </div>
           </div>
 
           {/* Auto-Purchase Quick Toggle */}
           {agent && (
-            <div className="border-2 border-neo-black p-3 mb-3">
+            <div className="border-2 border-black p-3 mb-3">
               <div className="flex items-center justify-between">
                 <div>
                   <div className="font-mono text-sm font-bold">AUTO-PURCHASE</div>
                   <div className="font-mono text-xs">
                     {agent.autoPurchaseEnabled ? (
-                      <span className="text-neo-green">Enabled - Agent will buy tickets automatically</span>
+                      <span className="text-[#00FF41]">Enabled - Agent will buy tickets automatically</span>
                     ) : (
                       <span className="text-gray-500">Disabled - Agent will not auto-purchase</span>
                     )}
@@ -276,7 +282,7 @@ export const EscrowDashboard: React.FC<EscrowDashboardProps> = ({
                   className="w-full max-w-md p-4"
                 >
                   <NeoCard className="p-6">
-                    <h3 className="font-display text-xl mb-4 text-neo-green">
+                    <h3 className="font-display text-xl mb-4 text-[#00FF41]">
                       DEPOSIT TO ESCROW
                     </h3>
                     <NeoInput
@@ -329,7 +335,7 @@ export const EscrowDashboard: React.FC<EscrowDashboardProps> = ({
                   className="w-full max-w-md p-4"
                 >
                   <NeoCard className="p-6">
-                    <h3 className="font-display text-xl mb-4 text-neo-yellow">
+                    <h3 className="font-display text-xl mb-4 text-[#FFEB3B]">
                       WITHDRAW FROM ESCROW
                     </h3>
                     <p className="font-mono text-xs mb-4">

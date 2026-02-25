@@ -237,7 +237,7 @@ export const SecondaryMarket = () => {
                           ) : (
                             <div className="w-3 h-3 rounded-full bg-black/50" />
                           )}
-                          <span className="font-mono font-black text-xl">{agent.account.agentId}</span>
+                          <span className="font-mono font-black text-xl">{agent.account.name || agent.account.agentId}</span>
                         </div>
                         <div className={`px-3 py-1 font-mono text-xs font-bold border-2 border-black ${escrow ? 'bg-black text-white' : 'bg-white text-black'}`}>
                           {escrow ? 'ACTIVE' : 'NOT CREATED'}

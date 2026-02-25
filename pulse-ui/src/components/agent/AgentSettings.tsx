@@ -4,6 +4,7 @@ import { NeoCard, NeoInput, NeoButton, NeoToggle } from '../neo';
 import { useToast } from '../../contexts/ToastContext';
 import { useAIAgent } from '../../hooks/useAIAgent';
 import { useAgentsContext } from '../../contexts/AgentsContext';
+import { useWallet } from '@solana/wallet-adapter-react';
 
 interface AgentSettingsProps {
   onClose?: () => void;
@@ -22,8 +23,9 @@ export const AgentSettings = ({ onClose }: AgentSettingsProps) => {
   const { createAgent } = useAIAgent();
   const { addToast } = useToast();
   const { refresh } = useAgentsContext();
+  const { publicKey } = useWallet();
   const [loading, setLoading] = useState(false);
-  
+
   // //UI MAS HEAD STYLE: Initial state
   const [settings, setSettings] = useState<AgentSettings>({
     agentName: '',
@@ -39,22 +41,24 @@ export const AgentSettings = ({ onClose }: AgentSettingsProps) => {
       return;
     }
 
+    if (!publicKey) {
+      addToast('Please connect your wallet', 'error');
+      return;
+    }
+
     setLoading(true);
     try {
-      /** * //LOGIC PUNYA LO: Auto-generate ID 
+      /** * //LOGIC PUNYA LO: Auto-generate ID
        * Pake format AGENT-timestamp biar unik
        */
       const autoAgentId = `AGENT-${Date.now()}`;
 
       // //LOGIC PUNYA LO: Kirim name & id ke Smart Contract
-      const tx = await createAgent({
+      await createAgent({
         agentId: autoAgentId,
         name: settings.agentName,
         maxBudgetPerTicket: Math.floor(settings.maxBudgetPerTicket * 1e9), // SOL to lamports
         totalBudget: Math.floor(settings.totalBudget * 1e9),
-        autoPurchaseEnabled: settings.autoPurchaseEnabled,
-        autoPurchaseThreshold: settings.autoPurchaseThreshold,
-        maxTicketsPerEvent: 3 // Default limit safety
       });
 
       // Wait for confirmation
@@ -81,7 +85,7 @@ export const AgentSettings = ({ onClose }: AgentSettingsProps) => {
     } finally {
       setLoading(false);
     }
-  }, [settings, createAgent, refresh, onClose]);
+  }, [settings, createAgent, refresh, onClose, publicKey, addToast]);
 
   return (
     <NeoCard className="p-6">

@@ -40,6 +40,7 @@ export interface TicketTier {
 export interface AIAgent {
   owner: PublicKey;
   agentId: string;
+  name: string;           // Agent nickname stored on-chain
   isActive: boolean;
   autoPurchaseEnabled: boolean;
   autoPurchaseThreshold: number;
@@ -76,6 +77,7 @@ export interface EventWithTiers extends ProgramAccount<Event> {
 
 export interface CreateAgentInput {
   agentId: string;
+  name: string;
   maxBudgetPerTicket: number | bigint;
   totalBudget: number | bigint;
   autoPurchaseEnabled?: boolean;

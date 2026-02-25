@@ -25,6 +25,7 @@ import { supabase } from '../utils/supabase';
 
 interface CreateAgentInput {
   agentId: string;
+  name: string;
   maxBudgetPerTicket: number | bigint;
   totalBudget: number | bigint;
 }
@@ -367,7 +368,7 @@ export const useAIAgent = (): UseAIAgentReturn => {
    * Add budget to an agent
    */
   const addAgentBudget = useCallback(
-    async (agentPDA: PublicKey, agentId: string, amountLamports: number): Promise<string> => {
+    async (agentPDA: PublicKey, _agentId: string, amountLamports: number): Promise<string> => {
       if (!program || !publicKey) throw new Error('Wallet not connected');
 
       try {

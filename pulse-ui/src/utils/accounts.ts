@@ -267,7 +267,7 @@ export const AgentEscrowDiscriminatorB58 = bs58.encode(AgentEscrowDiscriminator)
  * Decode Anchor account data using the program's coder
  * NOTE: Pass full data (with discriminator), coder will handle it
  */
-function decodeAccount<T>(program: Program, typeName: string, data: Buffer): T {
+export function decodeAccount<T>(program: Program, typeName: string, data: Buffer): T {
   // Don't skip discriminator - Anchor Coder needs the full data
   return program.coder.accounts.decode(typeName, data) as T;
 }
@@ -582,7 +582,7 @@ export async function fetchConfig(
 export async function fetchUserTickets(
   connection: Connection,
   owner: PublicKey,
-  programId: PublicKey
+  _programId: PublicKey
 ): Promise<any[]> {
   try {
     // 1. Cari semua Token Account (ATA) milik user yang Token Program-nya standar
