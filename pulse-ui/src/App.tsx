@@ -8,7 +8,8 @@ import { WalletButton } from './components/WalletButton';
 import { useAgentsContext } from './contexts/AgentsContext';
 import { useProgram } from './hooks/useProgram';
 import LandingPage from './components/landing/LandingPage';
-import { OnboardingModal } from './components/OnboardingModal'; // //NEW: Import Modal Onboarding
+import { OnboardingModal } from './components/OnboardingModal';
+import { ToastProvider } from './contexts/ToastContext';
 
 type Tab = 'agents' | 'marketplace' | 'secondary' | 'tickets';
 
@@ -140,12 +141,16 @@ function MainApp() {
   );
 }
 
+import { ToastProvider } from './contexts/ToastContext';
+
 function App() {
   return (
-    <Routes>
-      <Route path="/" element={<MainApp />} />
-      <Route path="/home" element={<LandingPage />} />
-    </Routes>
+    <ToastProvider>
+      <Routes>
+        <Route path="/" element={<MainApp />} />
+        <Route path="/home" element={<LandingPage />} />
+      </Routes>
+    </ToastProvider>
   );
 }
 
