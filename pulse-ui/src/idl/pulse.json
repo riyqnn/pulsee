@@ -592,6 +592,59 @@
       "args": []
     },
     {
+      "name": "decrease_agent_budget",
+      "discriminator": [
+        161,
+        239,
+        94,
+        153,
+        62,
+        69,
+        88,
+        219
+      ],
+      "accounts": [
+        {
+          "name": "agent",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  103,
+                  101,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "owner"
+              },
+              {
+                "kind": "account",
+                "path": "agent.agent_id",
+                "account": "AIAgent"
+              }
+            ]
+          }
+        },
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
       "name": "deposit_to_escrow",
       "discriminator": [
         246,

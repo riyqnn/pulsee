@@ -129,6 +129,13 @@ pub mod pulse {
         Ok(())
     }
 
+    pub fn decrease_agent_budget(ctx: Context<DecreaseAgentBudget>, amount: u64) -> Result<()> {
+        let agent = &mut ctx.accounts.agent;
+        agent.total_budget = agent.total_budget.checked_sub(amount).ok_or(TixError::MathUnderflow)?;
+        msg!("Decreased {} lamports from agent {} budget", amount, agent.agent_id);
+        Ok(())
+    }
+
     pub fn update_agent_config(
         ctx: Context<UpdateAgentConfig>,
         max_budget_per_ticket: Option<u64>,
@@ -378,6 +385,25 @@ pub struct ToggleAutoPurchase<'info> {
 
 #[derive(Accounts)]
 pub struct AddAgentBudget<'info> {
+    #[account(
+        mut,
+        seeds = [
+            b"agent",
+            owner.key().as_ref(),
+            agent.agent_id.as_bytes()
+        ],
+        bump = agent.bump
+    )]
+    pub agent: Account<'info, AIAgent>,
+    #[account(
+        mut,
+        constraint = owner.key() == agent.owner @ TixError::Unauthorized
+    )]
+    pub owner: Signer<'info>,
+}
+
+#[derive(Accounts)]
+pub struct DecreaseAgentBudget<'info> {
     #[account(
         mut,
         seeds = [

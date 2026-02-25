@@ -158,51 +158,85 @@ export const useAIAgent = (): UseAIAgentReturn => {
   );
 
   /**
-   * Deposit to escrow
+   * Deposit to escrow AND Update Agent Budget (Bundled Transaction)
    */
   const depositToEscrow = useCallback(
-  async (escrowPDA: PublicKey, agentPDA: PublicKey, amountLamports: number): Promise<string> => {
-    if (!program || !publicKey) throw new Error('Wallet not connected');
-
-    setLoading(true);
-    try {
-      const tx = await program.methods
-        .depositToEscrow(new BN(amountLamports))
-        .accounts({
-          escrow: escrowPDA,
-          agent: agentPDA,
-          owner: publicKey,
-          systemProgram: SystemProgram.programId,
-        })
-        .rpc();
-      return tx;
-    } finally {
-      setLoading(false);
-    }
-  },
-  [program, publicKey]
-);
-
-
-/**
- * Withdraw from escrow
-*/
-  const withdrawFromEscrow = useCallback(
     async (escrowPDA: PublicKey, agentPDA: PublicKey, amountLamports: number): Promise<string> => {
       if (!program || !publicKey) throw new Error('Wallet not connected');
-  
+
       setLoading(true);
       try {
+        const amountBN = new BN(amountLamports);
+
+        console.log(`Bundling Deposit & Budget Increase: ${amountLamports} lamports`);
+
         const tx = await program.methods
-          .withdrawFromEscrow(new BN(amountLamports))
+          .depositToEscrow(amountBN)
           .accounts({
             escrow: escrowPDA,
             agent: agentPDA,
             owner: publicKey,
             systemProgram: SystemProgram.programId,
           })
+          .postInstructions([
+            await program.methods
+              .addAgentBudget(amountBN)
+              .accounts({
+                agent: agentPDA,
+                owner: publicKey,
+              })
+              .instruction()
+          ])
           .rpc();
+
         return tx;
+      } catch (err) {
+        console.error("Bundled Deposit Error:", err);
+        throw err;
+      } finally {
+        setLoading(false);
+      }
+    },
+    [program, publicKey]
+  );
+
+
+/**
+   * Withdraw from escrow AND Decrease Agent Budget (Bundled Transaction)
+   */
+  const withdrawFromEscrow = useCallback(
+    async (escrowPDA: PublicKey, agentPDA: PublicKey, amountLamports: number): Promise<string> => {
+      if (!program || !publicKey) throw new Error('Wallet not connected');
+  
+      setLoading(true);
+      try {
+        const amountBN = new BN(amountLamports);
+
+        console.log(`Bundling Withdraw & Budget Decrease: ${amountLamports} lamports`);
+  
+        const tx = await program.methods
+          .withdrawFromEscrow(amountBN)
+          .accounts({
+            escrow: escrowPDA,
+            agent: agentPDA,
+            owner: publicKey,
+            systemProgram: SystemProgram.programId,
+          })
+          .postInstructions([
+            await program.methods
+              .decreaseAgentBudget(amountBN)
+              .accounts({
+                agent: agentPDA,
+                owner: publicKey,
+              })
+              .instruction()
+          ])
+          .rpc();
+
+        return tx;
+      } catch (err) {
+        console.error("Bundled Withdraw Error:", err);
+        throw err;
       } finally {
         setLoading(false);
       }
