@@ -15,8 +15,9 @@ export const LiveLog = () => {
   const eventSourceRef = useRef<EventSource | null>(null);
 
   useEffect(() => {
-    // Connect to SSE endpoint
-    const eventSource = new EventSource('http://localhost:3001/logs');
+    // Connect to SSE endpoint - use environment variable for production
+    const schedulerUrl = import.meta.env.VITE_SCHEDULER_URL || 'http://localhost:3001';
+    const eventSource = new EventSource(`${schedulerUrl}/logs`);
     eventSourceRef.current = eventSource;
 
     eventSource.onopen = () => {

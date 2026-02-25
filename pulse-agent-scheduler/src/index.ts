@@ -506,6 +506,16 @@ async function main() {
   // 4. Start Server & Cron
   const PORT = process.env.PORT || 3001;
 
+  // Health check endpoint
+  app.get('/health', (req, res) => {
+    res.json({
+      status: 'ok',
+      service: 'pulse-agent-scheduler',
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime()
+    });
+  });
+
   // SSE endpoint for live logs
   app.get('/logs', (req, res) => {
     res.setHeader('Content-Type', 'text/event-stream');
