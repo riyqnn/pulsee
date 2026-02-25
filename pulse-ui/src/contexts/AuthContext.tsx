@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import { supabase } from '../utils/supabase';
 import type { User } from '@supabase/supabase-js';
@@ -48,7 +48,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         fetchProfile(session.user.id);
         // //NEW: Nangkep token pas load awal
         if (session.provider_token) {
-          saveGoogleTokens(session.user.id, session.provider_token, session.provider_refresh_token);
+            saveGoogleTokens(
+                session.user.id, 
+                session.provider_token, 
+                session.provider_refresh_token ?? undefined
+            );
         }
       } else {
         setIsLoading(false);
@@ -61,7 +65,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         fetchProfile(session.user.id);
         // //NEW: Nangkep token pas user baru aja login
         if (session.provider_token) {
-          saveGoogleTokens(session.user.id, session.provider_token, session.provider_refresh_token);
+            saveGoogleTokens(
+                session.user.id, 
+                session.provider_token, 
+                session.provider_refresh_token ?? undefined
+            );
         }
       } else {
         setProfile(null);
