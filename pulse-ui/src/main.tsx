@@ -8,6 +8,7 @@ import { EventsProvider } from './contexts/EventsContext.tsx';
 import { MarketProvider } from './contexts/MarketContext.tsx';
 import { ToastProvider } from './contexts/ToastContext';
 import './index.css';
+import { AuthProvider } from './contexts/AuthContext.tsx';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -17,7 +18,9 @@ createRoot(document.getElementById('root')!).render(
           <MarketProvider>
             <ToastProvider>
               <BrowserRouter>
-                <App />
+                <AuthProvider>
+                  <App />
+                </AuthProvider>
               </BrowserRouter>
             </ToastProvider>
           </MarketProvider>

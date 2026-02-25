@@ -1,5 +1,4 @@
 import { Link } from 'react-router-dom';
-import { useWallet } from '@solana/wallet-adapter-react';
 import { ArrowRight } from 'lucide-react';
 
 import { WalletButton } from '../WalletButton';
@@ -12,8 +11,6 @@ import {
 } from './sections';
 
 const LandingPage = () => {
-  const { connected } = useWallet();
-
   return (
     <div
       className="bg-[#FFFDFA] font-display text-neo-black overflow-x-hidden"
@@ -32,15 +29,15 @@ const LandingPage = () => {
             PULSE
           </Link>
           <div className="flex items-center gap-4">
-            {connected && (
-              <Link
-                to="/"
-                className="hidden sm:flex items-center gap-2 bg-neo-green text-neo-black font-bold border-4 border-neo-black px-6 py-2 shadow-neo-sm hover:shadow-neo transition-all transform hover:-translate-y-1 hover:-translate-x-1"
-              >
-                <span>Go to App</span>
-                <ArrowRight className="w-5 h-5" />
-              </Link>
-            )}
+            
+            <Link
+              to="/"
+              className="hidden sm:flex items-center gap-2 bg-[#00FF41] text-black font-black uppercase border-4 border-black px-6 py-2 shadow-[4px_4px_0_0_#000000] hover:shadow-none hover:translate-y-1 hover:translate-x-1 transition-all"
+            >
+              <span>Launch App</span>
+              <ArrowRight className="w-5 h-5" />
+            </Link>
+            
             <WalletButton />
           </div>
         </div>
@@ -55,11 +52,11 @@ const LandingPage = () => {
       </main>
 
       {/* Footer */}
-      <footer className="bg-black text-white py-12">
+      <footer className="bg-black text-white py-12 border-t-8 border-[#00FF41]">
         <div className="container mx-auto px-6 text-center font-mono">
-          <p className="text-2xl font-bold mb-2">PULSE</p>
-          <p className="text-neo-green">
-            Decentralized Ticketing on Solana.
+          <p className="text-4xl font-black mb-2 italic">PULSE</p>
+          <p className="text-[#00FF41] font-bold uppercase tracking-widest">
+            Decentralized Agentic Ticketing on Solana.
           </p>
           <p className="mt-8 text-sm text-gray-400">
             &copy; {new Date().getFullYear()} Pulse Protocol. All rights reserved.

@@ -8,6 +8,7 @@ import { WalletButton } from './components/WalletButton';
 import { useAgentsContext } from './contexts/AgentsContext';
 import { useProgram } from './hooks/useProgram';
 import LandingPage from './components/landing/LandingPage';
+import { OnboardingModal } from './components/OnboardingModal'; // //NEW: Import Modal Onboarding
 
 type Tab = 'agents' | 'marketplace' | 'secondary' | 'tickets';
 
@@ -33,6 +34,9 @@ function MainApp() {
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: 'var(--color-neo-white)' }}>
+      {/* //NEW: Pasang Onboarding Modal di sini. Dia akan nutupin layar kalau user belum siap */}
+      <OnboardingModal />
+
       {/* Grain overlay */}
       <div
         className="fixed inset-0 pointer-events-none opacity-[0.04] z-50"
@@ -50,7 +54,7 @@ function MainApp() {
               animate={{ opacity: 1, x: 0 }}
               className="flex items-center gap-4"
             >
-              <Link to="/home" className="font-display font-extrabold text-3xl sm:text-5xl tracking-tighter">
+              <Link to="/home" className="font-display font-extrabold text-3xl sm:text-5xl tracking-tighter hover:text-[#FF00F5] transition-colors">
                 PULSE
               </Link>
               <span className="hidden sm:inline-block font-mono text-sm bg-black text-white px-3 py-1 border-2 border-black">
@@ -78,9 +82,7 @@ function MainApp() {
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={getTabClass(activeTab === tab.id)}
-                whileHover={activeTab === tab.id ? {} : {
-                  scale: 1.02
-                }}
+                whileHover={activeTab === tab.id ? {} : { scale: 1.02 }}
                 whileTap={{ scale: 0.95 }}
               >
                 <div className="flex items-center gap-2 sm:gap-3">
@@ -118,18 +120,18 @@ function MainApp() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-gray-200 bg-white py-8">
+      <footer className="border-t-4 border-black bg-white py-8 mt-auto">
         <div className="max-w-7xl mx-auto px-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <h4 className="font-bold text-lg">PULSE PROTOCOL</h4>
-              <p className="text-sm text-gray-600 mt-1">
-                Autonomous AI-powered ticket acquisition on Solana
+              <h4 className="font-black text-xl italic uppercase">PULSE PROTOCOL</h4>
+              <p className="font-mono text-sm text-neutral-600 mt-1 uppercase">
+                Autonomous AI-powered ticket acquisition
               </p>
             </div>
-            <div className="text-right">
-              <p className="text-sm text-gray-600">Solana Devnet</p>
-              <p className="text-xs text-gray-500 mt-1">© 2025 Pulse Protocol</p>
+            <div className="text-right font-mono">
+              <p className="text-sm font-bold text-[#00FF41] bg-black inline-block px-2 py-1 border-2 border-black">Solana Devnet</p>
+              <p className="text-xs text-neutral-500 mt-2 uppercase">© 2026 Pulse Protocol</p>
             </div>
           </div>
         </div>
