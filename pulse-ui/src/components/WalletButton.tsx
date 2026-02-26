@@ -132,7 +132,7 @@ export const WalletButton = () => {
             className="absolute right-0 top-full mt-3 w-80 bg-white border-4 border-black shadow-[12px_12px_0_0_#000000] z-50 flex flex-col"
           >
             <div className="p-4 border-b-4 border-black bg-neutral-100">
-              <p className="font-mono text-xs text-neutral-500 uppercase font-bold mb-1">Neural ID</p>
+              <p className="font-mono text-xs text-neutral-500 uppercase font-bold mb-1">User Profile</p>
               <p className="font-black text-lg truncate" title={user.email}>{user.email}</p>
             </div>
 

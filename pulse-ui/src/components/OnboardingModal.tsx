@@ -102,8 +102,7 @@ export const OnboardingModal = () => {
                     Identify<br/>Yourself
                   </h2>
                   <p className="font-mono text-neutral-600 max-w-md mx-auto uppercase text-xs font-bold leading-relaxed">
-                    Accessing Neural Net requires authentication. <br/>
-                    Link your Google Identity to begin.
+                                         Accessing The System requires authentication. <br/>                    Link your Google Identity to begin.
                   </p>
                 </div>
                 <button 
@@ -160,7 +159,7 @@ export const OnboardingModal = () => {
               >
                 <div>
                   <h2 className="font-black text-6xl uppercase italic tracking-tighter mb-4 text-black">
-                    Neural<br/>Origin
+                    Set Your<br/>Origin
                   </h2>
                   <p className="font-mono text-neutral-600 max-w-md mx-auto uppercase text-xs font-bold leading-relaxed">
                     Wallet linked. <br/>

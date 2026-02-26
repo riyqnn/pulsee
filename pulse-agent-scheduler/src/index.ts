@@ -139,6 +139,7 @@ let program: any;
 let schedulerKeypair: Keypair;
 let supabase: SupabaseClient;
 let genAI: GoogleGenerativeAI;
+const MAX_RETRY_LIMIT = 10;
 
 // ============== PDA Derivations ==============
 function getEventPDA(organizer: PublicKey, eventId: string): [PublicKey, number] {
@@ -155,7 +156,6 @@ function getEscrowPDA(agentPDA: PublicKey, owner: PublicKey): [PublicKey, number
 }
 
 // ============== Brain Part 1: Determine Airports ==============
-// ============== Brain Part 1: Determine Airports (IATA) ==============
 async function determineAirports(originText: string, destinationText: string): Promise<{ origin_iata: string, dest_iata: string, requires_flight: boolean }> {
   const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash", generationConfig: { responseMimeType: "application/json" } });
 
@@ -520,6 +520,7 @@ async function runAutonomousWar() {
   if (!program || !supabase) return;
   console.log("🛰️ [SYSTEM] AI NEURAL NET SCANNING MISSIONS...");
 
+  // 1. Ambil misi yang statusnya masih 'active'
   const { data: missions, error: mError } = await supabase
     .from('agent_missions')
     .select('*')
@@ -539,13 +540,8 @@ async function runAutonomousWar() {
     console.log(`\n──────────────── MISSION_START: ${mission.id.slice(0, 8)} ────────────────`);
     console.log(`🎯 [TARGET] Event: ${mission.event_name} | Tier: ${mission.priority_tier_id} | Budget: ${mission.max_price_sol} SOL`);
     
-    if (mission.purchased_quantity >= mission.target_quantity) {
-      console.log(`✅ [MISSION_COMPLETE] Target already met for ${mission.event_name}`);
-      await supabase.from('agent_missions').update({ status: 'completed' }).eq('id', mission.id);
-      continue;
-    }
-
     try {
+      // 2. Fetch Metadata Event
       const { data: eventMeta, error: eError } = await supabase
         .from('events_metadata')
         .select('*')
@@ -558,11 +554,43 @@ async function runAutonomousWar() {
       }
 
       // ==========================================
-      // 1. INTELLIGENCE & COOLDOWN LAYER
+      // LOGIC 1: EVENT EXPIRATION CHECK
+      // ==========================================
+      const now = new Date();
+      const eventStart = new Date(eventMeta.event_start);
+      
+      if (now > eventStart) {
+        console.log(`💀 [EXPIRED] Event date (${eventMeta.event_start}) has passed. Terminating.`);
+        await supabase.from('agent_missions').update({ 
+          status: 'failed', 
+          ai_decision_status: 'EXPIRED',
+          agent_reasoning_log: `Mission terminated by system: Event date (${eventMeta.event_start}) has already passed.` 
+        }).eq('id', mission.id);
+        continue;
+      }
+
+      // ==========================================
+      // LOGIC 2: RETRY LIMIT CHECK
+      // ==========================================
+      const retryCount = mission.retry_count || 0;
+      const maxRetries = mission.max_retries || MAX_RETRY_LIMIT;
+      
+      if (retryCount >= maxRetries) {
+        console.log(`🛑 [ABANDONED] Max retries (${maxRetries}) reached. Agent giving up.`);
+        await supabase.from('agent_missions').update({ 
+          status: 'failed', 
+          ai_decision_status: 'GAVE_UP',
+          agent_reasoning_log: `Agent reached the maximum retry limit of ${maxRetries} attempts without satisfying conditions (Calendar/Budget). Mission abandoned to save resources.` 
+        }).eq('id', mission.id);
+        continue;
+      }
+
+      // ==========================================
+      // 3. INTELLIGENCE & COOLDOWN LAYER
       // ==========================================
       let currentDecision = mission.ai_decision_status || 'PENDING';
       let needsToThink = false;
-      let finalItinerary = null; // //NEW: Variabel buat nampung itinerary sementara
+      let finalItinerary = null;
 
       const lastCheckTime = mission.last_ai_check ? new Date(mission.last_ai_check).getTime() : 0;
       const diffMinutes = Math.floor((Date.now() - lastCheckTime) / (1000 * 60));
@@ -571,32 +599,26 @@ async function runAutonomousWar() {
         needsToThink = true;
       } else if (currentDecision === 'HOLD') {
         if (diffMinutes >= 2) {
-          console.log(`⏳ [COOLDOWN] 2 minutes passed. Waking up Agent for re-evaluation...`);
+          console.log(`⏳ [COOLDOWN] 2m passed. Re-evaluating (Attempt ${retryCount + 1}/${maxRetries})...`);
           needsToThink = true;
         } else {
-          console.log(`⏸️ [STANDING_BY] Decision is HOLD. Reason: "${mission.agent_reasoning_log}". Retrying in ${2 - diffMinutes}m.`);
+          console.log(`⏸️ [STANDING_BY] On HOLD. Wait: ${2 - diffMinutes}m. Reason: "${mission.agent_reasoning_log.slice(0, 40)}..."`);
+          continue; 
         }
       }
 
       if (needsToThink) {
         console.log(`\n--- [AGENT_THINKING_PROCESS] ---`);
         
-        // Step A: Calendar Sync
+        // Step A: Calendar Sync (Real GCal)
         console.log(`📅 [1/3] Syncing Google Calendar for ${eventMeta.event_start}...`);
-        
-        // //FIXED: Panggil cuma pake wallet & tanggal aja! AI bakal otomatis nyari tokennya di database.
-        const calendarData = await checkRealGoogleCalendar(
-          mission.agent_owner, 
-          eventMeta.event_start
-        );
-        
+        const calendarData = await checkRealGoogleCalendar(mission.agent_owner, eventMeta.event_start);
         console.log(`   └─ Result: ${calendarData.status.toUpperCase()} - ${calendarData.message}`);
 
         // Step B: Routing & Flight
         console.log(`🌐 [2/3] Analyzing Logistics: ${mission.user_origin_city || 'Jakarta'} -> ${eventMeta.location}`);
         const routing = await determineAirports(mission.user_origin_city || "Jakarta", eventMeta.location);
-        console.log(`   └─ Route: ${routing.origin_iata} to ${routing.dest_iata} | Flight Required: ${routing.requires_flight}`);
-
+        
         let flightData = { found: true, cost_sol: 0, details: "Local event, no flight needed." };
         if (routing.requires_flight) {
           console.log(`✈️ [2.5/3] Querying AirLabs API for schedules...`);
@@ -604,12 +626,12 @@ async function runAutonomousWar() {
           flightData = { 
             found: flights.found, 
             cost_sol: flights.estimated_price_sol || 0,
-            details: flights.found ? `Found ${flights.airline} flight ${flights.flight_number} for ~$${flights.raw_price_usd}` : flights.reason || "Not found"
+            details: flights.found ? `Found ${flights.airline} flight ${flights.flight_number} for ~$${flights.raw_price_usd}` : "Not found"
           };
           console.log(`   └─ Result: ${flightData.details} (Est. ${flightData.cost_sol} SOL)`);
         }
 
-        // Step C: The Brain
+        // Step C: The Brain (Gemini)
         console.log(`🧠 [3/3] Feeding data to Gemini Neural Net for Final Decision...`);
         const verdict = await consultGemini({
           maxPrice: mission.max_price_sol,
@@ -624,34 +646,34 @@ async function runAutonomousWar() {
         console.log(`\n🤖 [AI_VERDICT] -> ${verdict.decision}`);
         console.log(`💬 [AI_REASONING] -> ${verdict.reasoning}`);
         
-        currentDecision = verdict.decision;
-        finalItinerary = verdict.itinerary; // //NEW: Simpan ke memori lokal
-        
-        if(currentDecision === 'EXECUTE') {
-             console.log(`🧳 [ITINERARY_GENERATED] -> ${JSON.stringify(finalItinerary)}`);
-        }
-        console.log(`----------------------------------\n`);
-
-        // Simpan keputusan dan log analisis ke DB
-        // //NEW: Kalau EXECUTE, sekalian save secured_itinerary-nya!
-        await supabase.from('agent_missions').update({
-          ai_decision_status: currentDecision,
+        // Persiapkan data update ke DB
+        const updatePayload: any = {
+          ai_decision_status: verdict.decision,
           agent_reasoning_log: verdict.reasoning,
           last_ai_check: new Date().toISOString(),
-          ...(currentDecision === 'EXECUTE' && finalItinerary ? { secured_itinerary: finalItinerary } : {})
-        }).eq('id', mission.id);
+        };
+
+        if (verdict.decision === 'HOLD') {
+          updatePayload.retry_count = retryCount + 1;
+        }
+
+        if (verdict.decision === 'EXECUTE') {
+          updatePayload.secured_itinerary = verdict.itinerary;
+          currentDecision = 'EXECUTE';
+          finalItinerary = verdict.itinerary;
+        }
+
+        await supabase.from('agent_missions').update(updatePayload).eq('id', mission.id);
       }
 
       // ==========================================
-      // 2. BLOCKCHAIN EXECUTION LAYER
+      // 4. BLOCKCHAIN EXECUTION LAYER
       // ==========================================
       if (currentDecision === 'EXECUTE') {
         console.log(`⚡ [EXECUTION_PHASE] Proceeding to Smart Contract Interaction...`);
         let targetTier = mission.priority_tier_id;
         
         try {
-          console.log(`📦 [DEBUG] Preparing Solana Transaction (Tier: ${targetTier})...`);
-          
           const cleanMeta = {
             name: eventMeta.name.slice(0, 30),
             location: eventMeta.location.slice(0, 30),
@@ -669,24 +691,25 @@ async function runAutonomousWar() {
           
           console.log(`✅ [ON_CHAIN_SUCCESS] NFT Ticket Minted! TX: ${tx}`);
           
-          mission.purchased_quantity += 1;
-          const status = mission.purchased_quantity >= mission.target_quantity ? 'completed' : 'active';
-          
+          // Misi selesai
           await supabase.from('agent_missions').update({
-            purchased_quantity: mission.purchased_quantity,
-            status: status
+            purchased_quantity: mission.purchased_quantity + 1,
+            status: 'completed'
           }).eq('id', mission.id);
 
         } catch (txErr: any) {
-          console.log(`⚠️ [TX_FAILED] Failed to buy ${targetTier}. Error: ${txErr.message}`);
+          console.log(`⚠️ [TX_FAILED] Primary tier failed. Error: ${txErr.message}`);
           
+          // Fallback logic
           if (mission.fallback_tier_id) {
-            console.log(`🔄 [FALLBACK] Attempting recovery with Fallback Tier: ${mission.fallback_tier_id}`);
+            console.log(`🔄 [FALLBACK] Attempting recovery with: ${mission.fallback_tier_id}`);
             try {
               const fbTx = await executePurchaseMission(mission.agent_owner, mission.agent_id, eventMeta.organizer_pubkey, eventMeta.event_id, mission.fallback_tier_id, eventMeta);
               console.log(`✅ [FALLBACK_SUCCESS] NFT Ticket Minted! TX: ${fbTx}`);
-              mission.purchased_quantity += 1;
-              await supabase.from('agent_missions').update({ purchased_quantity: mission.purchased_quantity }).eq('id', mission.id);
+              await supabase.from('agent_missions').update({ 
+                purchased_quantity: mission.purchased_quantity + 1,
+                status: 'completed'
+              }).eq('id', mission.id);
             } catch (fbErr: any) {
               console.log(`❌ [CRITICAL_FAIL] Both Primary and Fallback tiers failed.`);
             }

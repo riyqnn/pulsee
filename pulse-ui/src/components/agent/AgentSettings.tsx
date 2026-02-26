@@ -105,7 +105,7 @@ export const AgentSettings = ({ onClose }: AgentSettingsProps) => {
           <NeoInput
             label="Agent Nickname"
             type="text"
-            placeholder="e.g., Si Joki Konser"
+            placeholder="e.g., Agent-01"
             value={settings.agentName}
             onChange={(e) => setSettings({ ...settings, agentName: e.target.value })}
           />

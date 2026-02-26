@@ -35,7 +35,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         // Refresh token mungkin undefined tergantung settingan GCP lo, tapi tetep kita tangkep kalo ada
         ...(refreshToken ? { google_refresh_token: refreshToken } : {})
       }).eq('id', userId);
-      console.log("🔐 [AuthContext] Google Token synced to Neural Net!");
+      console.log("🔐 [AuthContext] Google Token synced to Database!");
     } catch (e) {
       console.error("Failed to sync Google Token", e);
     }
